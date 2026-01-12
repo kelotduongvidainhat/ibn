@@ -1,0 +1,132 @@
+version: '3.7' # Docker Compose file version
+
+networks: # Network definitions
+  test: # Custom network name
+    name: fabric_test # Name as it will appear in 'docker network ls'
+
+services: # Container definitions
+
+  orderer.example.com: # The Ordering Service Node (OSN)
+    container_name: orderer.example.com # Fixed name for easy referencing
+    image: hyperledger/fabric-orderer:2.5.14 # Fabric Orderer binary image
+    environment: # Runtime environment variables
+      - FABRIC_LOGGING_SPEC=INFO # Logging level (DEBUG, INFO, WARN, ERROR)
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0 # Address orderer listens on
+      - ORDERER_GENERAL_LISTENPORT=7050 # Main port for gRPC traffic
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP # MSP ID matching configtx.yaml
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp # Container path to MSP
+      # TLS Configuration
+      - ORDERER_GENERAL_TLS_ENABLED=true # Enable Transport Layer Security
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key # Path to TLS private key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt # Path to TLS public cert
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt] # Root CA cert for TLS trust
+      - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt # Cert for Raft communication
+      - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key # Private key for Raft
+      - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt] # Root CA for Raft trust
+      # Channel Participation (v2.x method)
+      - ORDERER_GENERAL_BOOTSTRAPMETHOD=none # Disable legacy system channel bootstrap
+      - ORDERER_CHANNELPARTICIPATION_ENABLED=true # Enable new osnadmin API
+      - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7053 # Admin port for osnadmin commands
+      - ORDERER_ADMIN_TLS_ENABLED=true # Enable TLS for admin endpoint
+      - ORDERER_ADMIN_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key # Admin TLS key
+      - ORDERER_ADMIN_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt # Admin TLS cert
+      - ORDERER_ADMIN_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt] # Admin TLS root CA
+      - ORDERER_ADMIN_TLS_CLIENTAUTHREQUIRED=true # Enforce mutual TLS for admin calls
+      - ORDERER_ADMIN_TLS_CLIENTROOTCAS=[/var/hyperledger/orderer/tls/ca.crt] # Trusted client CA
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric # Container working directory
+    command: orderer # Command to run on start
+    volumes: # List of mounted folders/files
+        - ./organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp # Identity
+        - ./organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/:/var/hyperledger/orderer/tls # Encryption
+        - orderer.example.com:/var/hyperledger/production/orderer # Persistent ledger storage
+    ports: # Map container ports to host ports
+      - 7050:7050 # gRPC
+      - 7053:7053 # osnadmin
+    networks: # Connect to our custom network
+      - test
+
+  peer0.org1.example.com: # The Peer Node
+    container_name: peer0.org1.example.com # Fixed name
+    image: hyperledger/fabric-peer:2.5.14 # Fabric Peer binary image
+    environment: # Runtime environment variables
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock # Docker engine access
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test # Network for chaincode containers
+      - FABRIC_LOGGING_SPEC=INFO # Logging level
+      # TLS Configuration
+      - CORE_PEER_TLS_ENABLED=true # Enable TLS
+      - CORE_PEER_PROFILE_ENABLED=true # Enable profiling endpoint
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt # Peer TLS cert
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key # Peer TLS key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt # Peer root CA
+      # Peer Specifics
+      - CORE_PEER_ID=peer0.org1.example.com # Unique identifier
+      - CORE_PEER_ADDRESS=peer0.org1.example.com:7051 # Peer address
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051 # Listen address
+      - CORE_PEER_CHAINCODEADDRESS=peer0.org1.example.com:7052 # Chaincode callback address
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052 # Listen for chaincode
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051 # Initial gossip node
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org1.example.com:7051 # External gossip address
+      - CORE_PEER_LOCALMSPID=Org1MSP # MSP ID matching configtx.yaml
+      - CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:9443 # Metrics/Operations port
+      # External Builders (For CaaS)
+      - CORE_PEER_CHAINCODE_EXTERNALBUILDERS=[{"name":"ccaas-builder","path":"/opt/hyperledger/builders/ccaas"}]
+    volumes: # Volume mounts
+        - /var/run/docker.sock:/host/var/run/docker.sock # Access to host Docker
+        - ./organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp # Identity
+        - ./organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/etc/hyperledger/fabric/tls # Encryption
+        - ../builders/ccaas:/opt/hyperledger/builders/ccaas # The CaaS builder scripts
+        - peer0.org1.example.com:/var/hyperledger/production # Persistent ledger storage
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer # Task working directory
+    command: peer node start # Start the peer process
+    ports: # External port mapping
+      - 7051:7051 # gRPC
+      - 9443:9443 # Operations
+    networks: # Link to test network
+      - test
+
+  cli: # Administrative Tool Service
+    container_name: cli # Fixed name
+    image: hyperledger/fabric-tools:2.5.14 # Contains peer, osnadmin CLI tools
+    tty: true # Keep container alive
+    stdin_open: true # Allow interactive shell
+    environment: # Variables to set Admin role and TLS trust
+      - GOPATH=/opt/gopath # Go path
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock # Docker access
+      - FABRIC_LOGGING_SPEC=INFO # Logging level
+      - CORE_PEER_ID=cli # Identity name
+      - CORE_PEER_ADDRESS=peer0.org1.example.com:7051 # Targeted peer
+      - CORE_PEER_LOCALMSPID=Org1MSP # Org MSP ID
+      - CORE_PEER_TLS_ENABLED=true # Peer TLS enabled
+      # Admin Credentials for CLI
+      - CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer # Start location
+    command: /bin/bash # Command on start
+    volumes: # Mappings to host files
+        - /var/run/docker.sock:/host/var/run/docker.sock # Docker
+        - ./organizations:/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations # Certs
+        - ./scripts:/opt/gopath/src/github.com/hyperledger/fabric/peer/scripts # Shared scripts
+        - ./channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts # Genesis block
+        - ./packaging:/opt/gopath/src/github.com/hyperledger/fabric/peer/packaging # Chaincode packages
+    networks: # Network link
+      - test
+
+  chaincode-basic: # The External Chaincode Service
+    container_name: chaincode-basic
+    build:
+      context: ../chaincode
+      dockerfile: Dockerfile
+    image: basic-cc-image
+    environment:
+      - CHAINCODE_SERVER_ADDRESS=0.0.0.0:9999
+      - CHAINCODE_ID=basic_1.0:8a6db41906e844c33a4dba1b32a1014228cdfcb7ba31841de96cc329deaabc32 # Current Package ID
+    ports:
+      - 9999:9999 # CC server port
+    networks:
+      - test
+
+volumes: # Definition of persistent database volumes
+  orderer.example.com: # Orderer ledger volume
+  peer0.org1.example.com: # Peer ledger volume

@@ -1,0 +1,33 @@
+################################################################################
+# ORDERER ORGANIZATIONS: Defines the ordering service configuration.
+################################################################################
+OrdererOrgs: # Root key for ordering organization definitions
+
+  - Name: Orderer # Human-readable name of the ordering organization
+    Domain: example.com # Common domain for the orderer nodes
+    EnableNodeOUs: true # Enables NodeOU classification (Admin, Orderer, etc.)
+    
+    # Specs: List of individual orderer nodes to generate crypto for
+    Specs: 
+      - Hostname: orderer # Becomes orderer.example.com
+        # SANS: Alternate names for TLS (optional)
+        # SANS: ["localhost", "127.0.0.1"]
+
+################################################################################
+# PEER ORGANIZATIONS: Defines the peer organization(s) and their identities.
+################################################################################
+PeerOrgs: # Root key for peer organization definitions
+
+  - Name: Org1 # Human-readable name (matches configtx.yaml)
+    Domain: org1.example.com # Common domain for the peer nodes
+    EnableNodeOUs: true # Critical: Allows Fabric to distinguish client/peer/admin roles
+    
+    # Template: Generates a sequence of peers based on a count
+    Template:
+      Count: 1 # Number of peers to create (peer0, peer1, etc.)
+      # Start: 0 # Starting index (default is 0)
+      # Hostname: peer{{.Index}} # Naming pattern (default is peer{{.Index}})
+
+    # Users: Generates organizational user identities
+    Users:
+      Count: 1 # Number of non-admin users. Note: Admin identity is ALWAYS created by default.

@@ -1,0 +1,19 @@
+# Binaries
+bin/
+
+# Generated Fabric artifacts
+network/organizations/
+network/channel-artifacts/
+network/packaging/*.tar.gz
+network/packaging/package_id.txt
+
+# Go
+chaincode/chaincode
+vendor/
+
+# Logs
+*.log
+log.txt
+
+# OS files
+.DS_Store

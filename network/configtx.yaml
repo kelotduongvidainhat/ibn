@@ -1,0 +1,154 @@
+################################################################################
+# ORGANIZATIONS Section: Defines the participants in our network.
+################################################################################
+Organizations: # Root key for all organization definitions
+
+    - &OrdererOrg # Anchor (label) used to reference this block later in Profiles
+        Name: OrdererOrg # Human-readable name for the organization
+        ID: OrdererMSP # The MSP (Membership Service Provider) ID used in policies
+        MSPDir: organizations/ordererOrganizations/example.com/msp # Local path to the crypto materials
+        Policies: # Access control rules for this specific organization
+            Readers: # Who can read channel data
+                Type: Signature # Policy type based on valid signatures
+                Rule: "OR('OrdererMSP.member')" # Any member of OrdererOrg can read
+            Writers: # Who can submit transactions (config updates usually)
+                Type: Signature # Policy type based on valid signatures
+                Rule: "OR('OrdererMSP.member')" # Any member of OrdererOrg can write
+            Admins: # Who has administrative rights for this organization
+                Type: Signature # Policy type based on valid signatures
+                Rule: "OR('OrdererMSP.admin')" # Only the identity with 'admin' role
+        OrdererEndpoints: # List of orderer addresses for service discovery
+            - orderer.example.com:7050 # The primary endpoint for this orderer
+
+    - &Org1 # Anchor (label) for the Peer organization
+        Name: Org1MSP # Human-readable name
+        ID: Org1MSP # The MSP ID used in the channel and chaincode policies
+        MSPDir: organizations/peerOrganizations/org1.example.com/msp # Path to Org1's MSP folder
+        Policies: # Rights defined at the Org level
+            Readers: # Read access
+                Type: Signature # Signature-based check
+                Rule: "OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client')" # Admins, peers, or clients can read
+            Writers: # Write access
+                Type: Signature # Signature-based check
+                Rule: "OR('Org1MSP.admin', 'Org1MSP.client')" # Only admins or clients can write/invoke
+            Admins: # Admin access
+                Type: Signature # Signature-based check
+                Rule: "OR('Org1MSP.admin')" # Only explicitly defined admins
+            Endorsement: # Who can provide a valid chaincode endorsement
+                Type: Signature # Signature-based check
+                Rule: "OR('Org1MSP.peer')" # Only peers can sign for endorsement
+        AnchorPeers: # Defines the entry point for cross-org communication
+            - Host: peer0.org1.example.com # Hostname of the anchor peer
+              Port: 7051 # Port of the anchor peer
+
+################################################################################
+# CAPABILITIES Section: Defines the features enabled for this network version.
+################################################################################
+Capabilities: # Root key for capabilities
+
+    Channel: &ChannelCapabilities # Features available at the channel wide level
+        V2_0: true # Enables Fabric v2.0+ features for the channel
+    Orderer: &OrdererCapabilities # Features available for the ordering nodes
+        V2_0: true # Enables Fabric v2.0+ features for the orderer
+    Application: &ApplicationCapabilities # Features available for application transactions
+        V2_5: true # Enables latest v2.5 features (like improved lifecycle)
+
+################################################################################
+# APPLICATION Section: Default settings for application-related transactions.
+################################################################################
+Application: &ApplicationDefaults # Template for application settings
+
+    Organizations: # Placeholder for Orgs to be filled in Profiles
+    Policies: # Global policies for the application part of the channel
+        Readers: # Read policy
+            Type: ImplicitMeta # Checks sub-policies (e.g., Orgs' Readers)
+            Rule: "ANY Readers" # satisfied if any organization's Reader policy is met
+        Writers: # Write policy
+            Type: ImplicitMeta # Checks sub-policies
+            Rule: "ANY Writers" # satisfied if any organization's Writer policy is met
+        Admins: # Admin policy
+            Type: ImplicitMeta # Checks sub-policies
+            Rule: "MAJORITY Admins" # satisfied if >50% of Orgs' Admins agree
+        LifecycleEndorsement: # Who can approve/commit chaincode definitions
+            Type: ImplicitMeta # Checks sub-policies
+            Rule: "MAJORITY Endorsement" # satisfied if majority of Orgs' peers endorse
+        Endorsement: # Default endorsement policy for chaincode
+            Type: ImplicitMeta # Checks sub-policies
+            Rule: "MAJORITY Endorsement" # satisfied if majority of Orgs' peers endorse
+    Capabilities: # Reference to the capabilities defined above
+        <<: *ApplicationCapabilities # Merge the ApplicationCapabilities anchor
+
+################################################################################
+# ORDERER Section: Default settings for the ordering nodes.
+################################################################################
+Orderer: &OrdererDefaults # Template for orderer settings
+
+    OrdererType: etcdraft # The consensus algorithm (Raft is standard for v2.x)
+    EtcdRaft: # Specific configuration for the Raft consensus protocol
+        Consenters: # The set of nodes that participate in ordering
+        - Host: orderer.example.com
+          Port: 7050
+          ClientTLSCert: organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+          ServerTLSCert: organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+    Addresses: # Global list of orderer addresses
+        - orderer.example.com:7050 # The main address peers use to send blocks
+    BatchTimeout: 2s # Max time to wait before creating a block (even if not full)
+    BatchSize: # Controls how many transactions go into a single block
+        MaxMessageCount: 10 # Max number of transactions per block
+        AbsoluteMaxBytes: 99 MB # Max size of the block in bytes
+        PreferredMaxBytes: 512 KB # Optimal block size for performance
+    Organizations: # Placeholder for Orgs to be filled in Profiles
+    Policies: # Global policies for the orderer part of the channel
+        Readers: # Who can read orderer logs/blocks
+            Type: ImplicitMeta # Checks sub-policies
+            Rule: "ANY Readers" # Any org reader can read
+        Writers: # Who can send transactions to the orderer
+            Type: ImplicitMeta # Checks sub-policies
+            Rule: "ANY Writers" # Any org writer can send
+        Admins: # Who can perform orderer admin tasks (like adding nodes)
+            Type: ImplicitMeta # Checks sub-policies
+            Rule: "MAJORITY Admins" # Majority of orderer org admins must agree
+        BlockValidation: # Checks if a block is validly signed by orderers
+            Type: ImplicitMeta # Checks sub-policies
+            Rule: "ANY Writers" # Standard rule for block sanity checks
+    Capabilities: # Reference to the orderer capabilities
+        <<: *OrdererCapabilities # Merge the OrdererCapabilities anchor
+
+################################################################################
+# CHANNEL Section: Default settings for the overall channel.
+################################################################################
+Channel: &ChannelDefaults # Template for channel-wide settings
+
+    Policies: # Global policies for the entire channel config environment
+        Readers: # Channel level read access
+            Type: ImplicitMeta # Meta policy
+            Rule: "ANY Readers" # Satisfied if any participant can read
+        Writers: # Channel level write access
+            Type: ImplicitMeta # Meta policy
+            Rule: "ANY Writers" # Satisfied if any participant can write
+        Admins: # Channel level admin access (config changes)
+            Type: ImplicitMeta # Meta policy
+            Rule: "MAJORITY Admins" # Majority of all admins must agree
+    Capabilities: # Reference to channel capabilities
+        <<: *ChannelCapabilities # Merge the ChannelCapabilities anchor
+
+################################################################################
+# PROFILES Section: Defines actual channel configurations (Genesis blocks).
+################################################################################
+Profiles: # Root key for all network/channel profiles
+
+    Org1Channel: # The ID of our channel profile
+        Consortium: SampleConsortium # Standard label required for v2.x app channels
+        <<: *ChannelDefaults # Load default channel settings
+        Orderer: # Specific orderer config for this channel
+            <<: *OrdererDefaults # Load default orderer settings
+            Organizations: # List of participating orderer organizations
+                - *OrdererOrg # Reference the OrdererOrg anchor defined at the top
+            Capabilities: # Orderer capabilities for this specific profile
+                <<: *OrdererCapabilities # Reference anchor
+        Application: # Specific application config for this channel
+            <<: *ApplicationDefaults # Load default application settings
+            Organizations: # List of participating peer organizations
+                - *Org1 # Reference the Org1 anchor defined at the top
+            Capabilities: # Application capabilities for this specific profile
+                <<: *ApplicationCapabilities # Reference anchor
