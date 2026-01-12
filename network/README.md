@@ -48,10 +48,32 @@ The recommended way to start is:
 5. **Genesis**: Generates the channel block using `configtxgen`.
 6. **Join**: Uses `osnadmin` and `peer channel join` to establish the network.
 
-## 📜 Role-Based Access (NodeOUs)
-We use Node OUs to distinguish participants:
-- **Admin**: Authorized to delete assets or upgrade chaincode.
-- **Peer**: Authorized to endorse transactions.
-- **Client**: Authorized to submit transactions.
+## 🛠️ Superadmin Toolkit
 
-These roles are embedded in the X.509 certificates and checked by the Smart Contract.
+This network includes advanced scripts for managing nodes and scaling without restarting the entire fabric:
+
+- **`scripts/add-peer.sh <peer_id> <org_name>`**: 
+    - Registers/Enrolls a new peer identity with the Fabric CA.
+    - Dynamically injects the peer service into `docker-compose.yaml`.
+    - Automatically calculates unique ports to avoid collisions.
+- **`scripts/remove-peer.sh <peer_id> <org_name>`**: 
+    - Stops and removes the peer container and volumes.
+    - Removes the service definition from `docker-compose.yaml`.
+    - Cleans up filesystem identities.
+- **`scripts/peer-join-channel.sh <peer_id> <org_name> <channel_name>`**:
+    - High-level script to join any provisioned peer to any existing channel.
+- **`scripts/network-down.sh`**:
+    - Performs an exhausted cleanup of all Fabric containers, volumes, and cryptographic material.
+
+## 🏢 Scaling the Network (Org Factory)
+
+The network is designed to be extensible. Adding a new organization involves:
+1. Creating a new CA.
+2. Generating a new Org MSP definition.
+3. Updating the channel configuration via a "Config Update Dance" (transaction update).
+4. Joining the new Org's peers.
+
+*Refer to `addOrg3.sh` in the root for a blueprint of this process.*
+
+## 📜 Role-Based Access (NodeOUs)
+...

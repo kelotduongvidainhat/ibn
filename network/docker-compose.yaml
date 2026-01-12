@@ -1,166 +1,222 @@
-version: '3.7' # Docker Compose file version
-
-networks: # Network definitions
-  test: # Custom network name
-    name: fabric_test # Name as it will appear in 'docker network ls'
-
-services: # Container definitions
-
-  ca_org1: # Certificate Authority for Org1
+version: '3.7'
+networks:
+  test:
+    name: fabric_test
+services:
+  ca_org1:
     image: hyperledger/fabric-ca:1.5.15
     container_name: ca_org1
     environment:
-      - FABRIC_CA_SERVER_CA_NAME=ca-org1 # Service name internal
-      - FABRIC_CA_SERVER_TLS_ENABLED=true # Use TLS for CA calls
-      - FABRIC_CA_SERVER_PORT=7054 # Default CA port
-      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:17054 # Monitoring
-      - FABRIC_CA_SERVER_CA_BOOTSTRAP_ENTRIES=admin:adminpw
+    - FABRIC_CA_SERVER_CA_NAME=ca-org1
+    - FABRIC_CA_SERVER_TLS_ENABLED=true
+    - FABRIC_CA_SERVER_PORT=7054
+    - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:17054
+    - FABRIC_CA_SERVER_CA_BOOTSTRAP_ENTRIES=admin:adminpw
     ports:
-      - "7054:7054"
-      - "17054:17054"
+    - 7054:7054
+    - 17054:17054
     volumes:
-      - ./organizations/fabric-ca/org1:/etc/hyperledger/fabric-ca-server # Config & Certs
+    - ./organizations/fabric-ca/org1:/etc/hyperledger/fabric-ca-server
     networks:
-      - test
-
-  ca_orderer: # Certificate Authority for the Orderer Org
+    - test
+  ca_orderer:
     image: hyperledger/fabric-ca:1.5.15
     container_name: ca_orderer
     environment:
-      - FABRIC_CA_SERVER_CA_NAME=ca-orderer
-      - FABRIC_CA_SERVER_TLS_ENABLED=true
-      - FABRIC_CA_SERVER_PORT=9054
-      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:19054
-      - FABRIC_CA_SERVER_CA_BOOTSTRAP_ENTRIES=admin:adminpw
+    - FABRIC_CA_SERVER_CA_NAME=ca-orderer
+    - FABRIC_CA_SERVER_TLS_ENABLED=true
+    - FABRIC_CA_SERVER_PORT=9054
+    - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:19054
+    - FABRIC_CA_SERVER_CA_BOOTSTRAP_ENTRIES=admin:adminpw
     ports:
-      - "9054:9054"
-      - "19054:19054"
+    - 9054:9054
+    - 19054:19054
     volumes:
-      - ./organizations/fabric-ca/orderer:/etc/hyperledger/fabric-ca-server
+    - ./organizations/fabric-ca/orderer:/etc/hyperledger/fabric-ca-server
     networks:
-      - test
-
-  orderer.example.com: # The Ordering Service Node (OSN)
-    container_name: orderer.example.com # Fixed name for easy referencing
-    image: hyperledger/fabric-orderer:2.5.14 # Fabric Orderer binary image
-    environment: # Runtime environment variables
-      - FABRIC_LOGGING_SPEC=INFO # Logging level (DEBUG, INFO, WARN, ERROR)
-      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0 # Address orderer listens on
-      - ORDERER_GENERAL_LISTENPORT=7050 # Main port for gRPC traffic
-      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP # MSP ID matching configtx.yaml
-      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp # Container path to MSP
-      # TLS Configuration
-      - ORDERER_GENERAL_TLS_ENABLED=true # Enable Transport Layer Security
-      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key # Path to TLS private key
-      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt # Path to TLS public cert
-      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt] # Root CA cert for TLS trust
-      - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt # Cert for Raft communication
-      - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key # Private key for Raft
-      - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt] # Root CA for Raft trust
-      # Channel Participation (v2.x method)
-      - ORDERER_GENERAL_BOOTSTRAPMETHOD=none # Disable legacy system channel bootstrap
-      - ORDERER_CHANNELPARTICIPATION_ENABLED=true # Enable new osnadmin API
-      - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7053 # Admin port for osnadmin commands
-      - ORDERER_ADMIN_TLS_ENABLED=true # Enable TLS for admin endpoint
-      - ORDERER_ADMIN_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key # Admin TLS key
-      - ORDERER_ADMIN_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt # Admin TLS cert
-      - ORDERER_ADMIN_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt] # Admin TLS root CA
-      - ORDERER_ADMIN_TLS_CLIENTAUTHREQUIRED=true # Enforce mutual TLS for admin calls
-      - ORDERER_ADMIN_TLS_CLIENTROOTCAS=[/var/hyperledger/orderer/tls/ca.crt] # Trusted client CA
-    working_dir: /opt/gopath/src/github.com/hyperledger/fabric # Container working directory
-    command: orderer # Command to run on start
-    volumes: # List of mounted folders/files
-        - ./organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp # Identity
-        - ./organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/:/var/hyperledger/orderer/tls # Encryption
-        - orderer.example.com:/var/hyperledger/production/orderer # Persistent ledger storage
-    ports: # Map container ports to host ports
-      - 7050:7050 # gRPC
-      - 7053:7053 # osnadmin
-    networks: # Connect to our custom network
-      - test
-
-  peer0.org1.example.com: # The Peer Node
-    container_name: peer0.org1.example.com # Fixed name
-    image: hyperledger/fabric-peer:2.5.14 # Fabric Peer binary image
-    environment: # Runtime environment variables
-      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock # Docker engine access
-      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test # Network for chaincode containers
-      - FABRIC_LOGGING_SPEC=INFO # Logging level
-      # TLS Configuration
-      - CORE_PEER_TLS_ENABLED=true # Enable TLS
-      - CORE_PEER_PROFILE_ENABLED=true # Enable profiling endpoint
-      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt # Peer TLS cert
-      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key # Peer TLS key
-      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt # Peer root CA
-      # Peer Specifics
-      - CORE_PEER_ID=peer0.org1.example.com # Unique identifier
-      - CORE_PEER_ADDRESS=peer0.org1.example.com:7051 # Peer address
-      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051 # Listen address
-      - CORE_PEER_CHAINCODEADDRESS=peer0.org1.example.com:7052 # Chaincode callback address
-      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052 # Listen for chaincode
-      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051 # Initial gossip node
-      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org1.example.com:7051 # External gossip address
-      - CORE_PEER_LOCALMSPID=Org1MSP # MSP ID matching configtx.yaml
-      - CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:9443 # Metrics/Operations port
-      # External Builders (For CaaS)
-      - CORE_PEER_CHAINCODE_EXTERNALBUILDERS=[{"name":"ccaas-builder","path":"/opt/hyperledger/builders/ccaas"}]
-    volumes: # Volume mounts
-        - /var/run/docker.sock:/host/var/run/docker.sock # Access to host Docker
-        - ./organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp # Identity
-        - ./organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/etc/hyperledger/fabric/tls # Encryption
-        - ../builders/ccaas:/opt/hyperledger/builders/ccaas # The CaaS builder scripts
-        - peer0.org1.example.com:/var/hyperledger/production # Persistent ledger storage
-    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer # Task working directory
-    command: peer node start # Start the peer process
-    ports: # External port mapping
-      - 7051:7051 # gRPC
-      - 9443:9443 # Operations
-    networks: # Link to test network
-      - test
-
-  cli: # Administrative Tool Service
-    container_name: cli # Fixed name
-    image: hyperledger/fabric-tools:2.5.14 # Contains peer, osnadmin CLI tools
-    tty: true # Keep container alive
-    stdin_open: true # Allow interactive shell
-    environment: # Variables to set Admin role and TLS trust
-      - GOPATH=/opt/gopath # Go path
-      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock # Docker access
-      - FABRIC_LOGGING_SPEC=INFO # Logging level
-      - CORE_PEER_ID=cli # Identity name
-      - CORE_PEER_ADDRESS=peer0.org1.example.com:7051 # Targeted peer
-      - CORE_PEER_LOCALMSPID=Org1MSP # Org MSP ID
-      - CORE_PEER_TLS_ENABLED=true # Peer TLS enabled
-      # Admin Credentials for CLI
-      - CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.crt
-      - CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.key
-      - CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer # Start location
-    command: /bin/bash # Command on start
-    volumes: # Mappings to host files
-        - /var/run/docker.sock:/host/var/run/docker.sock # Docker
-        - ./organizations:/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations # Certs
-        - ./scripts:/opt/gopath/src/github.com/hyperledger/fabric/peer/scripts # Shared scripts
-        - ./channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts # Genesis block
-        - ./packaging:/opt/gopath/src/github.com/hyperledger/fabric/peer/packaging # Chaincode packages
-    networks: # Network link
-      - test
-
-  chaincode-basic: # The External Chaincode Service
+    - test
+  orderer.example.com:
+    container_name: orderer.example.com
+    image: hyperledger/fabric-orderer:2.5.14
+    environment:
+    - FABRIC_LOGGING_SPEC=INFO
+    - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+    - ORDERER_GENERAL_LISTENPORT=7050
+    - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+    - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+    - ORDERER_GENERAL_TLS_ENABLED=true
+    - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+    - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+    - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+    - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+    - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+    - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+    - ORDERER_GENERAL_BOOTSTRAPMETHOD=none
+    - ORDERER_CHANNELPARTICIPATION_ENABLED=true
+    - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7053
+    - ORDERER_ADMIN_TLS_ENABLED=true
+    - ORDERER_ADMIN_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+    - ORDERER_ADMIN_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+    - ORDERER_ADMIN_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+    - ORDERER_ADMIN_TLS_CLIENTAUTHREQUIRED=true
+    - ORDERER_ADMIN_TLS_CLIENTROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric
+    command: orderer
+    volumes:
+    - ./organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp
+    - ./organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/:/var/hyperledger/orderer/tls
+    - orderer.example.com:/var/hyperledger/production/orderer
+    ports:
+    - 7050:7050
+    - 7053:7053
+    networks:
+    - test
+  peer0.org1.example.com:
+    container_name: peer0.org1.example.com
+    image: hyperledger/fabric-peer:2.5.14
+    environment:
+    - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+    - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test
+    - FABRIC_LOGGING_SPEC=INFO
+    - CORE_PEER_TLS_ENABLED=true
+    - CORE_PEER_PROFILE_ENABLED=true
+    - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+    - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+    - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+    - CORE_PEER_ID=peer0.org1.example.com
+    - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+    - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+    - CORE_PEER_CHAINCODEADDRESS=peer0.org1.example.com:7052
+    - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+    - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051
+    - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org1.example.com:7051
+    - CORE_PEER_LOCALMSPID=Org1MSP
+    - CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:9443
+    - CORE_PEER_CHAINCODE_EXTERNALBUILDERS=[{"name":"ccaas-builder","path":"/opt/hyperledger/builders/ccaas"}]
+    volumes:
+    - /var/run/docker.sock:/host/var/run/docker.sock
+    - ./organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp
+    - ./organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/etc/hyperledger/fabric/tls
+    - ../builders/ccaas:/opt/hyperledger/builders/ccaas
+    - peer0.org1.example.com:/var/hyperledger/production
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: peer node start
+    ports:
+    - 7051:7051
+    - 9443:9443
+    networks:
+    - test
+  peer2.org1.example.com:
+    container_name: peer2.org1.example.com
+    image: hyperledger/fabric-peer:2.5.14
+    environment:
+    - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+    - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test
+    - FABRIC_LOGGING_SPEC=INFO
+    - CORE_PEER_TLS_ENABLED=true
+    - CORE_PEER_PROFILE_ENABLED=true
+    - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+    - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+    - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+    - CORE_PEER_ID=peer2.org1.example.com
+    - CORE_PEER_ADDRESS=peer2.org1.example.com:7051
+    - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+    - CORE_PEER_CHAINCODEADDRESS=peer2.org1.example.com:7052
+    - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+    - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051
+    - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer2.org1.example.com:7051
+    - CORE_PEER_LOCALMSPID=Org1MSP
+    - CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:9443
+    - CORE_PEER_CHAINCODE_EXTERNALBUILDERS=[{"name":"ccaas-builder","path":"/opt/hyperledger/builders/ccaas"}]
+    volumes:
+    - /var/run/docker.sock:/host/var/run/docker.sock
+    - ./organizations/peerOrganizations/org1.example.com/peers/peer2.org1.example.com/msp:/etc/hyperledger/fabric/msp
+    - ./organizations/peerOrganizations/org1.example.com/peers/peer2.org1.example.com/tls:/etc/hyperledger/fabric/tls
+    - ../builders/ccaas:/opt/hyperledger/builders/ccaas
+    - peer2.org1.example.com:/var/hyperledger/production
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: peer node start
+    ports:
+    - 9051:7051
+    - 11443:9443
+    networks:
+    - test
+  cli:
+    container_name: cli
+    image: hyperledger/fabric-tools:2.5.14
+    tty: true
+    stdin_open: true
+    environment:
+    - GOPATH=/opt/gopath
+    - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+    - FABRIC_LOGGING_SPEC=INFO
+    - CORE_PEER_ID=cli
+    - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+    - CORE_PEER_LOCALMSPID=Org1MSP
+    - CORE_PEER_TLS_ENABLED=true
+    - CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.crt
+    - CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.key
+    - CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+    - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: /bin/bash
+    volumes:
+    - /var/run/docker.sock:/host/var/run/docker.sock
+    - ./organizations:/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations
+    - ./scripts:/opt/gopath/src/github.com/hyperledger/fabric/peer/scripts
+    - ./channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts
+    - ./packaging:/opt/gopath/src/github.com/hyperledger/fabric/peer/packaging
+    networks:
+    - test
+  chaincode-basic:
     container_name: chaincode-basic
     build:
       context: ../chaincode
       dockerfile: Dockerfile
     image: basic-cc-image
     environment:
-      - CHAINCODE_SERVER_ADDRESS=0.0.0.0:9999
-      - CHAINCODE_ID=basic_1.0:8a6db41906e844c33a4dba1b32a1014228cdfcb7ba31841de96cc329deaabc32 # Current Package ID
+    - CHAINCODE_SERVER_ADDRESS=0.0.0.0:9999
+    - CHAINCODE_ID=basic_1.0:8a6db41906e844c33a4dba1b32a1014228cdfcb7ba31841de96cc329deaabc32
     ports:
-      - 9999:9999 # CC server port
+    - 9999:9999
     networks:
-      - test
-
-volumes: # Definition of persistent database volumes
-  orderer.example.com: # Orderer ledger volume
-  peer0.org1.example.com: # Peer ledger volume
+    - test
+  peer1.org1.example.com:
+    container_name: peer1.org1.example.com
+    image: hyperledger/fabric-peer:2.5.14
+    environment:
+    - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+    - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test
+    - FABRIC_LOGGING_SPEC=INFO
+    - CORE_PEER_TLS_ENABLED=true
+    - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+    - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+    - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+    - CORE_PEER_ID=peer1.org1.example.com
+    - CORE_PEER_ADDRESS=peer1.org1.example.com:7051
+    - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+    - CORE_PEER_CHAINCODEADDRESS=peer1.org1.example.com:7052
+    - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+    - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051
+    - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.org1.example.com:7051
+    - CORE_PEER_LOCALMSPID=Org1MSP
+    - CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:9443
+    - CORE_PEER_CHAINCODE_EXTERNALBUILDERS=[{"name":"ccaas-builder","path":"/opt/hyperledger/builders/ccaas"}]
+    volumes:
+    - /var/run/docker.sock:/host/var/run/docker.sock
+    - ./organizations/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/msp:/etc/hyperledger/fabric/msp
+    - ./organizations/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/tls:/etc/hyperledger/fabric/tls
+    - ../builders/ccaas:/opt/hyperledger/builders/ccaas
+    - peer1.org1.example.com:/var/hyperledger/production
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: peer node start
+    ports:
+    - 10051:7051
+    - 12443:9443
+    networks:
+    - test
+volumes:
+  orderer.example.com: null
+  peer0.org1.example.com: null
+  peer2.org1.example.com: null
+  peer1.org1.example.com: null

@@ -55,7 +55,35 @@ docker-compose -f network/docker-compose.yaml up -d chaincode-basic
 docker exec cli peer chaincode query -C mychannel -n basic -c '{"Args":["ReadAsset","asset1"]}'
 ```
 
-## 🛠 Features Enabled
+## 🛠 Superadmin Toolkit
+
+The network includes a suite of automation scripts for advanced operations and scaling:
+
+### 1. Unified Setup & Deployment
+*   **`bootstrap-ca.sh`**: The master script. Cleans environment, starts CAs, enrolls nodes, and joins them to the channel.
+*   **`deploy-caas.sh`**: Handles the full Fabric lifecycle (Install -> Approve -> Commit) for Chaincode-as-a-Service.
+
+### 2. Network Scaling
+*   **`add-peer.sh <name> <org>`**: 
+    *   **Automation**: Registers node with CA, issues TLS certs, and injects a new service into `docker-compose.yaml` with smart port allocation.
+    *   **Example**: `./network/scripts/add-peer.sh peer3 org1`
+*   **`peer-join-channel.sh <name> <org> <channel>`**:
+    *   **Automation**: Flexibly joins any existing physical peer to any active logical channel.
+    *   **Example**: `./network/scripts/peer-join-channel.sh peer3 org1 mychannel`
+*   **`remove-peer.sh <name> <org>`**:
+    *   **Automation**: Safely stops containers, removes volumes, and cleans up YAML configurations to shrink the network.
+    *   **Example**: `./network/scripts/remove-peer.sh peer1 org1`
+
+### 3. Scaling the Network (Org Factory)
+*   **Blueprint**: See `addOrg3.sh` in the root and `network/scripts/add-org.sh` (concept) for how to dynamically admit entire new organizations using CA enrollments and channel configuration transaction updates.
+
+### 3. Cleanup & Maintenance
+*   **`network-down.sh`**: Safely teardowns all containers, wipes persistent volumes, and resets the cryptographic state.
+*   **`register-user.sh`**: (Planned) Automate client identity creation for application users.
+
+---
+
+## 🏗 Features Enabled
 - **Fabric CA Integration**: Dynamic identity management with dedicated CAs for Org1 and Orderer.
 - **Node OUs**: Automated role identification (Admin vs Peer vs Client).
 - **CaaS Workflow**: Chaincode runs as an external service for instant development cycles.

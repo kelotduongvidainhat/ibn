@@ -10,16 +10,29 @@ CC_NAME="basic"
 CC_VERSION="1.0"
 CC_SEQUENCE="1"
 NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PACKAGE_PATH="${NETWORK_DIR}/packaging/${CC_NAME}.tar.gz"
+PACKAGE_DIR="${NETWORK_DIR}/packaging"
 
 echo "=== Deploying CaaS Chaincode: ${CC_NAME} ==="
 
 # 1. Install Chaincode
-echo "--- Installing chaincode package on peer0.org1.example.com ---"
-docker exec cli peer lifecycle chaincode install "/opt/gopath/src/github.com/hyperledger/fabric/peer/packaging/${CC_NAME}.tar.gz" >&log.txt
+echo "--- Installing/Checking chaincode package on peer0.org1.example.com ---"
+docker exec cli peer lifecycle chaincode install "/opt/gopath/src/github.com/hyperledger/fabric/peer/packaging/${CC_NAME}.tar.gz" > log.txt 2>&1 || true
 cat log.txt
-PACKAGE_ID=$(sed -n "/${CC_NAME}_${CC_VERSION}/{s/^.*Package ID: //;p;q;}" log.txt)
-echo "Package ID: ${PACKAGE_ID}"
+
+# Extract Package ID from install or queryinstalled
+if grep -q "Chaincode code package identifier:" log.txt; then
+    PACKAGE_ID=$(grep "Chaincode code package identifier:" log.txt | awk '{print $NF}')
+else
+    echo "Chaincode likely already installed, querying Package ID..."
+    PACKAGE_ID=$(docker exec cli peer lifecycle chaincode queryinstalled | grep "Package ID: ${CC_NAME}_${CC_VERSION}:" | awk '{print $3}' | sed 's/,$//')
+fi
+
+echo "Extracted Package ID: ${PACKAGE_ID}"
+
+if [ -z "$PACKAGE_ID" ]; then
+    echo "ERROR: Failed to extract Package ID"
+    exit 1
+fi
 
 # 2. Approve Chaincode
 echo "--- Approving chaincode for Org1 ---"
@@ -55,5 +68,5 @@ docker exec cli peer lifecycle chaincode commit \
 
 # 5. Final Report
 echo "--- Chaincode Deployment Complete ---"
+echo "${PACKAGE_ID}" > "${PACKAGE_DIR}/package_id.txt"
 echo "Next step: Start the chaincode-basic container with PACKAGE_ID=${PACKAGE_ID}"
-echo "${PACKAGE_ID}" > "${NETWORK_DIR}/packaging/package_id.txt"
