@@ -2,12 +2,15 @@
 
 This project implements a high-performance, minimal Hyperledger Fabric network designed for rapid development using **Chaincode-as-a-Service (CaaS)**.
 
+## ✨ Quick Access
+👉 **[Read the 5-Minute QUICKSTART.md](./QUICKSTART.md)**
+
 ## ✅ Project Status
 - [x] **Phase 1: Planning & Setup** (Cryptogen Bootstrap)
 - [x] **Phase 2: Network Infrastructure** (Genesis, Channel Join, Healthy Nodes)
 - [x] **Phase 3: Smart Contract (CaaS)** (Go Contract, Dockerized Service, Verified transactions)
-- [ ] **Phase 4: Backend API** (Fabric Gateway, REST Endpoints)
-- [ ] **Phase 5: Frontend Dashboard** (Asset Visualization)
+- [x] **Phase 4: Backend API** (Fabric Gateway, REST Endpoints, Curl verified)
+- [🚧] **Phase 5: Advanced Logic** (History, Transfers, Automated Scripts)
 
 ## 🏗️ Project Structure
 

@@ -9,6 +9,10 @@ network/packaging/package_id.txt
 
 # Go
 chaincode/chaincode
+backend/main
+backend/backend
+chaincode/.env
+backend/.env
 vendor/
 
 # Logs
