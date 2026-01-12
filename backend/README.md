@@ -10,7 +10,7 @@ This refined backend service provides a RESTful interface to the Asset Managemen
 
 ## 🛠️ Prerequisites
 - Go 1.23+
-- A running Fabric network (run `./network/scripts/bootstrap.sh` first).
+- A running Fabric network (run `./network/scripts/bootstrap-ca.sh` first).
 
 ## 🏃 Running the API
 1. Install dependencies:

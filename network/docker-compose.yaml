@@ -6,6 +6,40 @@ networks: # Network definitions
 
 services: # Container definitions
 
+  ca_org1: # Certificate Authority for Org1
+    image: hyperledger/fabric-ca:1.5.15
+    container_name: ca_org1
+    environment:
+      - FABRIC_CA_SERVER_CA_NAME=ca-org1 # Service name internal
+      - FABRIC_CA_SERVER_TLS_ENABLED=true # Use TLS for CA calls
+      - FABRIC_CA_SERVER_PORT=7054 # Default CA port
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:17054 # Monitoring
+      - FABRIC_CA_SERVER_CA_BOOTSTRAP_ENTRIES=admin:adminpw
+    ports:
+      - "7054:7054"
+      - "17054:17054"
+    volumes:
+      - ./organizations/fabric-ca/org1:/etc/hyperledger/fabric-ca-server # Config & Certs
+    networks:
+      - test
+
+  ca_orderer: # Certificate Authority for the Orderer Org
+    image: hyperledger/fabric-ca:1.5.15
+    container_name: ca_orderer
+    environment:
+      - FABRIC_CA_SERVER_CA_NAME=ca-orderer
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=9054
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:19054
+      - FABRIC_CA_SERVER_CA_BOOTSTRAP_ENTRIES=admin:adminpw
+    ports:
+      - "9054:9054"
+      - "19054:19054"
+    volumes:
+      - ./organizations/fabric-ca/orderer:/etc/hyperledger/fabric-ca-server
+    networks:
+      - test
+
   orderer.example.com: # The Ordering Service Node (OSN)
     container_name: orderer.example.com # Fixed name for easy referencing
     image: hyperledger/fabric-orderer:2.5.14 # Fabric Orderer binary image

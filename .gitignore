@@ -11,8 +11,6 @@ network/packaging/package_id.txt
 chaincode/chaincode
 backend/main
 backend/backend
-chaincode/.env
-backend/.env
 vendor/
 
 # Logs

@@ -1,81 +1,57 @@
-# Fabric Network Configuration (Cryptogen Bootstrap)
+# Fabric Network Configuration (Fabric CA Bootstrap)
 
-This directory contains the essential configuration for the Hyperledger Fabric MVP network using static certificate generation (`cryptogen`).
+This directory contains the production-grade configuration for the Hyperledger Fabric MVP network using **Certificate Authorities** for dynamic identity management.
 
 ## 🧱 Network Topology
 
 ```text
 ⠿ fabric_test (Docker Network)
 ┃
+┣━━ 🔐 ca_org1 (CA for Org1) ──────────▶ Port 7054
+┣━━ 🔐 ca_orderer (CA for Orderer) ─────▶ Port 9054
+┃
 ┣━━ 📦 orderer.example.com (Ordering Node)
 ┃   ┣━━ 🔌 7050: Consensus/Tx
 ┃   ┣━━ 🔌 7053: Admin (osnadmin)
-┃   ┣━━ 📂 ./organizations/.../msp  ──▶ /var/hyperledger/orderer/msp
-┃   ┗━━ 📂 ./organizations/.../tls  ──▶ /var/hyperledger/orderer/tls
+┃   ┗━━ 📜 TLS: Issued by ca_orderer (SAN: orderer.example.com)
 ┃
 ┣━━ 📦 peer0.org1.example.com (Endorsing Node)
 ┃   ┣━━ 🔌 7051: Peer/Gossip
 ┃   ┣━━ 🔌 7052: Chaincode Callback (CaaS)
-┃   ┣━━ 📂 ./organizations/.../msp  ──▶ /etc/hyperledger/fabric/msp
-┃   ┣━━ 📂 ./organizations/.../tls  ──▶ /etc/hyperledger/fabric/tls
-┃   ┗━━ � ../builders/ccaas        ──▶ /opt/hyperledger/builders/ccaas
+┃   ┗━━ 📜 TLS: Issued by ca_org1 (SAN: peer0.org1.example.com)
 ┃
-┗━━ �📦 cli (Administrative Tools)
-    ┣━━ 📂 ./organizations          ──▶ /opt/gopath/.../organizations
-    ┣━━ 📂 ./channel-artifacts       ──▶ /opt/gopath/.../channel-artifacts
-    ┣━━ 🔨 peer
-    ┗━━ 🔨 osnadmin
+┗━━ 📦 cli (Administrative Tools)
+    ┗━━ 🔑 Identity: Admin@org1.example.com (Enrolled via CA)
 ```
 
-## 📂 File Manifest
+## 📂 Key Files
 
-- **`crypto-config.yaml`**: Template for `cryptogen` to create X.509 certs & keys.
-- **`configtx.yaml`**: Channel and Genesis block configuration.
-- **`docker-compose.yaml`**: Service definitions for the node containers.
-- **`scripts/bootstrap.sh`**: One-click automation for identity generation and channel setup.
-- **`scripts/test-network.sh`**: Health check utility to verify node and channel status.
-- **`scripts/deploy-caas.sh`**: One-click automation for CC install, approve, and commit.
-- **`organizations/`**: (Generated) Root folder for all crypto material.
-- **`channel-artifacts/`**: (Generated) Storage for the channel genesis block.
+- **`docker-compose.yaml`**: defines CA services, Orderer, Peer, and CLI.
+- **`configtx.yaml`**: Channel definitions and MSP policies (Reader/Writer/Admin).
+- **`scripts/bootstrap-ca.sh`**: The master orchestrator.
+- **`scripts/enroll-identities.sh`**: Interacts with `fabric-ca-client` to issue certificates.
+- **`scripts/deploy-caas.sh`**: Chaincode lifecycle automation.
 
 ## 🚀 Setup Workflow
 
-The easiest way to start the network is using the bootstrap script:
-
+### Automated Setup
+The recommended way to start is:
 ```bash
-# From the project root
-./network/scripts/bootstrap.sh
+./network/scripts/bootstrap-ca.sh
 ```
 
-Alternatively, manual steps:
+### What `bootstrap-ca.sh` do?
+1. **Cleanup**: Stops previous containers and wipes `organizations/` data.
+2. **CA Startup**: Launches `ca_org1` and `ca_orderer`.
+3. **Enrollment**: Runs `enroll-identities.sh` to fetch certificates for all nodes and the admin user.
+4. **MSP Setup**: Configures NodeOUs (`config.yaml`) in every MSP folder.
+5. **Genesis**: Generates the channel block using `configtxgen`.
+6. **Join**: Uses `osnadmin` and `peer channel join` to establish the network.
 
-1. **Step 1: Generate Cryptography**
-   ```bash
-   ./bin/cryptogen generate --config=./network/crypto-config.yaml --output="network/organizations"
-   ```
+## 📜 Role-Based Access (NodeOUs)
+We use Node OUs to distinguish participants:
+- **Admin**: Authorized to delete assets or upgrade chaincode.
+- **Peer**: Authorized to endorse transactions.
+- **Client**: Authorized to submit transactions.
 
-2. **Step 2: Generate Genesis Block**
-   ```bash
-   export FABRIC_CFG_PATH=${PWD}/network
-   ./bin/configtxgen -profile Org1Channel -outputBlock ./network/channel-artifacts/mychannel.block -channelID mychannel
-   ```
-
-3. **Step 3: Start Services**
-   ```bash
-   docker-compose -f network/docker-compose.yaml up -d
-   ```
-
-4. **Step 4: Join Channel**
-   Use the bootstrap script's logic or manual `osnadmin` calls via CLI.
-
-## 🧪 Testing the Network
-
-Verify everything is running correctly:
-```bash
-./network/scripts/test-network.sh
-```
-
-## 🛠 Features Enabled
-- **CaaS Ready**: External builder `ccaas-builder` is mounted to the peer.
-- **Modern Channeling**: Uses `osnadmin` and the Application Channel Participation API (No system channel).
-- **Mutual TLS**: Enforced across all boundaries for maximum security.
+These roles are embedded in the X.509 certificates and checked by the Smart Contract.

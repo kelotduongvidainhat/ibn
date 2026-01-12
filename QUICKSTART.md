@@ -1,15 +1,16 @@
 # 🚀 Hyperledger Fabric MVP Quickstart
 
-Follow these steps to spin up the entire blockchain stack from scratch.
+Follow these steps to spin up the entire production-style blockchain stack from scratch.
 
 ## 1️⃣ Infrastructure Setup
-Bootstrap the network (Identities, Genesis, Channels):
+Bootstrap the network using Fabric Certificate Authorities:
 ```bash
-./network/scripts/bootstrap.sh
+# This stops old containers, cleans data, starts CAs, and enrolls identities
+./network/scripts/bootstrap-ca.sh
 ```
 
 ## 2️⃣ Chaincode Deployment
-Prepare the chaincode definition and approve/commit to the channel:
+Prepare the chaincode definition and commit it to the channel:
 ```bash
 ./network/scripts/deploy-caas.sh
 ```
@@ -44,7 +45,7 @@ curl -X POST http://localhost:8080/api/assets \
 curl -X GET http://localhost:8080/api/assets/asset99
 ```
 
-## 🔍 Useful Commands
-- **Check Health**: `./network/scripts/test-network.sh`
-- **View Logs**: `docker logs -f chaincode-basic`
-- **Clean Everything**: `docker-compose -f network/docker-compose.yaml down --volumes`
+## 🔍 Path to Troubleshooting
+- **Logs**: `docker logs -f peer0.org1.example.com` or `docker logs -f chaincode-basic`.
+- **Clean Start**: `./network/scripts/bootstrap-ca.sh` handles cleaning for you.
+- **Permissions**: If you see `permission denied`, the script will automatically attempt to use `sudo chown` to fix Docker-owned files.
