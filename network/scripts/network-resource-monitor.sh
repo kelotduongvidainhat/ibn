@@ -11,7 +11,7 @@ NC='\033[0m'
 BOLD='\033[1m'
 
 # Discovery: Get all containers related to our network
-CONTAINERS=$(docker ps --format "{{.Names}}" | grep -E "peer|ca_|orderer|cli|chaincode" | sort)
+CONTAINERS=$(docker ps --format "{{.Names}}" | grep -E "peer|ca_|orderer|cli|chaincode|couchdb" | sort)
 
 if [ -z "$CONTAINERS" ]; then
     echo -e "${RED}❌ No network containers found.${NC}"

@@ -71,6 +71,16 @@ services:
     - 7053:7053
     networks:
     - test
+  couchdb0:
+    container_name: couchdb0
+    image: couchdb:3.3.2
+    environment:
+    - COUCHDB_USER=admin
+    - COUCHDB_PASSWORD=adminpw
+    ports:
+    - 5984:5984
+    networks:
+    - test
   peer0.org1.example.com:
     container_name: peer0.org1.example.com
     image: hyperledger/fabric-peer:2.5.14
@@ -92,6 +102,10 @@ services:
     - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org1.example.com:7051
     - CORE_PEER_LOCALMSPID=Org1MSP
     - CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:9443
+    - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+    - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0:5984
+    - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+    - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
     - CORE_PEER_CHAINCODE_EXTERNALBUILDERS=[{"name":"ccaas-builder","path":"/opt/hyperledger/builders/ccaas"}]
     volumes:
     - /var/run/docker.sock:/host/var/run/docker.sock
@@ -181,6 +195,31 @@ services:
     - 9999:9999
     networks:
     - test
+  backend:
+    container_name: backend
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+    - PORT=8080
+    - MSP_ID=Org1MSP
+    - CHANNEL_NAME=mychannel
+    - CHAINCODE_NAME=basic
+    - PEER_ENDPOINT=peer0.org1.example.com:7051
+    - PEER_HOST_OVERRIDE=peer0.org1.example.com
+    - CERT_PATH=/network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/signcerts/Admin@org1.example.com-cert.pem
+    - KEY_PATH=/network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore/priv_sk
+    - TLS_CERT_PATH=/network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+    ports:
+    - 8080:8080
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    - ./organizations:/network/organizations
+    - ./scripts:/network/scripts
+    - ./channel-artifacts:/network/channel-artifacts
+    - ./packaging:/network/packaging
+    networks:
+    - test
   peer1.org1.example.com:
     container_name: peer1.org1.example.com
     image: hyperledger/fabric-peer:2.5.14
@@ -222,13 +261,23 @@ services:
     - FABRIC_CA_SERVER_CA_NAME=ca-org2
     - FABRIC_CA_SERVER_TLS_ENABLED=true
     - FABRIC_CA_SERVER_PORT=7054
-    - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:17054
+    - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:18054
     - FABRIC_CA_SERVER_CA_BOOTSTRAP_ENTRIES=admin:adminpw
     ports:
     - 8054:7054
     - 18054:17054
     volumes:
     - ./organizations/fabric-ca/org2:/etc/hyperledger/fabric-ca-server
+    networks:
+    - test
+  couchdb1:
+    container_name: couchdb1
+    image: couchdb:3.3.2
+    environment:
+    - COUCHDB_USER=admin
+    - COUCHDB_PASSWORD=adminpw
+    ports:
+    - 6984:5984
     networks:
     - test
   peer0.org2.example.com:
@@ -239,6 +288,7 @@ services:
     - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test
     - FABRIC_LOGGING_SPEC=INFO
     - CORE_PEER_TLS_ENABLED=true
+    - CORE_PEER_PROFILE_ENABLED=true
     - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
     - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
     - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
@@ -247,10 +297,14 @@ services:
     - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
     - CORE_PEER_CHAINCODEADDRESS=peer0.org2.example.com:7052
     - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
-    - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org2.example.com:7051
+    - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051
     - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org2.example.com:7051
     - CORE_PEER_LOCALMSPID=Org2MSP
     - CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:9443
+    - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+    - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.peer0.org2.example.com:5984
+    - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+    - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
     - CORE_PEER_CHAINCODE_EXTERNALBUILDERS=[{"name":"ccaas-builder","path":"/opt/hyperledger/builders/ccaas"}]
     volumes:
     - /var/run/docker.sock:/host/var/run/docker.sock
@@ -261,8 +315,10 @@ services:
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     command: peer node start
     ports:
-    - 11051:7051
-    - 13443:9443
+    - 17051:7051
+    - 18443:9443
+    depends_on:
+    - couchdb.peer0.org2.example.com
     networks:
     - test
   ca_org3:
@@ -272,13 +328,23 @@ services:
     - FABRIC_CA_SERVER_CA_NAME=ca-org3
     - FABRIC_CA_SERVER_TLS_ENABLED=true
     - FABRIC_CA_SERVER_PORT=7054
-    - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:17054
+    - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:20054
     - FABRIC_CA_SERVER_CA_BOOTSTRAP_ENTRIES=admin:adminpw
     ports:
     - 10054:7054
     - 20054:17054
     volumes:
     - ./organizations/fabric-ca/org3:/etc/hyperledger/fabric-ca-server
+    networks:
+    - test
+  couchdb2:
+    container_name: couchdb2
+    image: couchdb:3.3.2
+    environment:
+    - COUCHDB_USER=admin
+    - COUCHDB_PASSWORD=adminpw
+    ports:
+    - 7984:5984
     networks:
     - test
   peer0.org3.example.com:
@@ -289,6 +355,7 @@ services:
     - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test
     - FABRIC_LOGGING_SPEC=INFO
     - CORE_PEER_TLS_ENABLED=true
+    - CORE_PEER_PROFILE_ENABLED=true
     - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
     - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
     - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
@@ -297,10 +364,14 @@ services:
     - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
     - CORE_PEER_CHAINCODEADDRESS=peer0.org3.example.com:7052
     - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
-    - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org3.example.com:7051
+    - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051
     - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org3.example.com:7051
     - CORE_PEER_LOCALMSPID=Org3MSP
     - CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:9443
+    - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+    - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.peer0.org3.example.com:5984
+    - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+    - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
     - CORE_PEER_CHAINCODE_EXTERNALBUILDERS=[{"name":"ccaas-builder","path":"/opt/hyperledger/builders/ccaas"}]
     volumes:
     - /var/run/docker.sock:/host/var/run/docker.sock
@@ -311,8 +382,10 @@ services:
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     command: peer node start
     ports:
-    - 12051:7051
-    - 14443:9443
+    - 18051:7051
+    - 19443:9443
+    depends_on:
+    - couchdb.peer0.org3.example.com
     networks:
     - test
   ca_org4:
@@ -463,6 +536,26 @@ services:
     ports:
     - 15051:7051
     - 17443:9443
+    networks:
+    - test
+  couchdb.peer0.org2.example.com:
+    container_name: couchdb.peer0.org2.example.com
+    image: couchdb:3.3.2
+    environment:
+    - COUCHDB_USER=admin
+    - COUCHDB_PASSWORD=adminpw
+    ports:
+    - 9984:5984
+    networks:
+    - test
+  couchdb.peer0.org3.example.com:
+    container_name: couchdb.peer0.org3.example.com
+    image: couchdb:3.3.2
+    environment:
+    - COUCHDB_USER=admin
+    - COUCHDB_PASSWORD=adminpw
+    ports:
+    - 10984:5984
     networks:
     - test
 volumes:

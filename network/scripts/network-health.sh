@@ -18,7 +18,7 @@ printf "%-30s | %-10s | %-15s | %-10s\n" "PEER" "STATUS" "HEIGHT" "SYNC"
 echo "--------------------------------------------------------------------------------"
 
 # 1. Discover all active peer containers
-PEERS=$(docker ps --format "{{.Names}}" | grep peer | grep example.com | sort)
+PEERS=$(docker ps --format "{{.Names}}" | grep "^peer" | grep example.com | sort)
 
 if [ -z "$PEERS" ]; then
     echo -e "${RED}❌ No peer containers found. Is the network running?${NC}"

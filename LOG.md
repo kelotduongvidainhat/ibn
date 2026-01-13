@@ -97,3 +97,23 @@ This document logs the manual steps taken to add a new organization (Org2) to th
 ---
 **Final Status**: Network scaled to 6 Organizations. All nodes synchronized. Superadmin Toolkit fully implemented and documented.
 **Key Achievement**: Moved from manual "Constitutional Surgery" to a fully automated, observable, and API-managed Multi-Org Consortium.
+---
+## Phase 8: Rich Queries & CouchDB Migration
+
+1.  **State Database Upgrade**:
+    - Migrated the entire network state database from LevelDB to **CouchDB**.
+    - Provisions a dedicated CouchDB container for every peer (e.g., `couchdb0`, `couchdb.peer0.org2...`).
+    - Enabled **Fauxton UI** access for visual ledger browsing.
+2.  **Smart Contract Upgrade (v1.1)**:
+    - Implemented `QueryAssets`: Generic function for complex JSON selectors.
+    - Implemented `GetAssetsByColor`: Attribute-based search helper.
+    - Implemented `GetAllAssets`: Full collection listing.
+3.  **Backend API Expansion**:
+    - Exposed `GET /api/assets` and `GET /api/assets/query` endpoints.
+    - Updated `asset_handler.go` to handle JSON unmarshaling of result slices.
+4.  **Troubleshooting & Hardening**:
+    - **Port Shadowing**: Discovered and resolved an issue where a ghost local process on port 8080 was shadowing the Dockerized backend service.
+    - **Peer Factory Update**: Hardened `add-peer.sh` to automatically calculate unique CouchDB ports and link them to new peers.
+
+---
+**Final Status**: Network migrated to CouchDB. Rich Queries enabled and verified via Backend API. Automation toolkit updated for database orchestration.

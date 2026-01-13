@@ -32,10 +32,11 @@ function usage() {
     echo "  health      Check ledger heights and synchronization"
     echo "  stats       Monitor CPU/RAM/Network resources"
     echo "  scale       Add a new organization to the network"
-    echo "  peer        Add a new peer to an existing organization"
+    echo "  peer        Add a new peer and join channel (optional)"
     echo "  deploy      Lifecycle: Approve and Commit chaincode (Batch)"
     echo "  profiles    Generate Connection Profiles for all orgs"
     echo "  onboard     Register/Enroll a new client user"
+    echo "  fresh       Fresh Start: Reset and build network from scratch"
     echo "  down        Stop and wipe the entire network"
     echo "  -i          Enter Interactive Menu mode (default)"
     echo ""
@@ -51,8 +52,9 @@ function interactive_menu() {
         echo "4) 📦 Chaincode Lifecycle   Approve & Commit (Batch Mode)"
         echo "5) 📇 Generate Profiles     Create SDK Connection JSONs"
         echo "6) 👤 Onboard Client       Register new app user"
-        echo "7) 🛑 Network Shutdown     Stop and wipe all data"
-        echo "8) 🚪 Exit"
+        echo "7) 💥 Fresh Start          Reset and Rebuild 3-Org Network"
+        echo "8) 🛑 Network Shutdown     Stop and wipe all data"
+        echo "9) 🚪 Exit"
         echo ""
         read -p "Select an option: " opt
 
@@ -78,12 +80,17 @@ function interactive_menu() {
                 read -p "Org Name (org1): " oname
                 "${SCRIPTS_DIR}/enroll-client.sh" "$cid" "$oname"
                 ;;
-            7) 
+            7)
+                echo -e "${RED}${BOLD}🔥 CRITICAL: This will destroy your current network and rebuild it from scratch.${NC}"
+                read -p "Proceed with Fresh Start? (y/N): " confirm
+                if [[ $confirm == [yY] ]]; then "${PROJECT_ROOT}/fresh-start.sh"; fi
+                ;;
+            8) 
                 echo -e "${RED}${BOLD}WARNING: This will delete ALL ledger data.${NC}"
                 read -p "Are you sure? (y/N): " confirm
                 if [[ $confirm == [yY] ]]; then "${SCRIPTS_DIR}/network-down.sh"; fi
                 ;;
-            8) exit 0 ;;
+            9|exit|quit) exit 0 ;;
             *) echo -e "${RED}Invalid option${NC}" ;;
         esac
         echo -e "\n${YELLOW}Press Enter to return to menu...${NC}"
@@ -99,11 +106,12 @@ else
         health)   "${SCRIPTS_DIR}/network-health.sh" ;;
         stats)    "${SCRIPTS_DIR}/network-resource-monitor.sh" ;;
         scale)    "${SCRIPTS_DIR}/add-org.sh" "$2" ;;
-        peer)     "${SCRIPTS_DIR}/add-peer.sh" "$2" "$3" ;;
+        peer)     "${SCRIPTS_DIR}/add-peer.sh" "$2" "$3" "$4" ;;
         approve)  "${SCRIPTS_DIR}/mass-approve.sh" "$2" "$3" "$4" ;;
         commit)   "${SCRIPTS_DIR}/mass-commit.sh" "$2" "$3" "$4" ;;
         profiles) "${SCRIPTS_DIR}/profile-gen.sh" ;;
         onboard)  "${SCRIPTS_DIR}/enroll-client.sh" "$2" "$3" ;;
+        fresh)    "${PROJECT_ROOT}/fresh-start.sh" ;;
         down)     "${SCRIPTS_DIR}/network-down.sh" ;;
         help)     usage ;;
         *)        echo -e "${RED}Unknown command: $1${NC}"; usage; exit 1 ;;

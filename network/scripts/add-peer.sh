@@ -1,15 +1,16 @@
 #!/bin/bash
 # network/scripts/add-peer.sh
 # Handles Identity (CA) and Infrastructure (Docker) for a new node.
-# This script does NOT join channels, as a peer may belong to many.
+# This script automatically provisions a paired CouchDB container.
 
 set -e
 
 PEER_ID=$1    
 ORG_NAME=$2   
+CHANNEL_NAME=$3
 
 if [ -z "$PEER_ID" ] || [ -z "$ORG_NAME" ]; then
-    echo "Usage: ./network/scripts/add-peer.sh <peer_id> <org_name>"
+    echo "Usage: ./network/scripts/add-peer.sh <peer_id> <org_name> [channel_name]"
     exit 1
 fi
 
@@ -68,7 +69,7 @@ cp "${PEER_BASE_DIR}/tls/signcerts/"* "${PEER_BASE_DIR}/tls/server.crt"
 cp "${ORG_ROOT_CERT}" "${PEER_BASE_DIR}/tls/ca.crt"
 
 # 4. UPDATE DOCKER
-echo "🐳 Updating docker-compose.yaml..."
+echo "🐳 Updating docker-compose.yaml with Peer and CouchDB info..."
 python3 <<EOF
 import yaml
 composed_path = '${NETWORK_DIR}/docker-compose.yaml'
@@ -80,8 +81,11 @@ org_domain = '${DOMAIN}'
 msp_id = '${MSP_ID}'
 
 peers = [svc for svc in data['services'] if 'peer' in svc and svc != 'cli']
+couches = [svc for svc in data['services'] if 'couchdb' in svc]
 max_grpc = 6051
 max_ops = 8443
+max_couch = 4984
+
 for p in peers:
     if p == peer_name: continue 
     ports = data['services'][p].get('ports', [])
@@ -92,6 +96,23 @@ for p in peers:
         ops = int(ports[1].split(':')[0])
         if ops > max_ops and ops < 20000: max_ops = ops
 
+for c in couches:
+    p_list = data['services'][c].get('ports', [])
+    if p_list:
+        c_port = int(p_list[0].split(':')[0])
+        if c_port > max_couch: max_couch = c_port
+
+couch_name = f"couchdb.{peer_name}"
+couch_port = max_couch + 1000
+
+couch_config = {
+    'container_name': couch_name,
+    'image': 'couchdb:3.3.2',
+    'environment': ['COUCHDB_USER=admin', 'COUCHDB_PASSWORD=adminpw'],
+    'ports': [f'{couch_port}:5984'],
+    'networks': ['test']
+}
+
 peer_config = {
     'container_name': peer_name,
     'image': 'hyperledger/fabric-peer:2.5.14',
@@ -100,6 +121,7 @@ peer_config = {
         'CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test',
         'FABRIC_LOGGING_SPEC=INFO',
         'CORE_PEER_TLS_ENABLED=true',
+        'CORE_PEER_PROFILE_ENABLED=true',
         'CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt',
         'CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key',
         'CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt',
@@ -112,6 +134,10 @@ peer_config = {
         f'CORE_PEER_GOSSIP_EXTERNALENDPOINT={peer_name}:7051',
         f'CORE_PEER_LOCALMSPID={msp_id}',
         'CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:9443',
+        'CORE_LEDGER_STATE_STATEDATABASE=CouchDB',
+        f'CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS={couch_name}:5984',
+        'CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin',
+        'CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw',
         'CORE_PEER_CHAINCODE_EXTERNALBUILDERS=[{"name":"ccaas-builder","path":"/opt/hyperledger/builders/ccaas"}]'
     ],
     'volumes': [
@@ -124,15 +150,40 @@ peer_config = {
     'working_dir': '/opt/gopath/src/github.com/hyperledger/fabric/peer',
     'command': 'peer node start',
     'ports': [f'{max_grpc + 1000}:7051', f'{max_ops + 1000}:9443'],
+    'depends_on': [couch_name],
     'networks': ['test']
 }
+data['services'][couch_name] = couch_config
 data['services'][peer_name] = peer_config
 data['volumes'][peer_name] = None
 with open(composed_path, 'w') as f:
     yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 EOF
 
-echo "🏗️ Starting container ${PEER_NAME}..."
-docker-compose -f "${NETWORK_DIR}/docker-compose.yaml" up -d "${PEER_NAME}"
+echo "🏗️ Starting containers for ${PEER_NAME} and CouchDB..."
+docker-compose -f "${NETWORK_DIR}/docker-compose.yaml" up -d "couchdb.${PEER_NAME}" "${PEER_NAME}"
 
-echo "✅ Node is UP. To join a channel, use: ./network/scripts/peer-join-channel.sh ${PEER_ID} ${ORG_NAME} <channel_name>"
+if [ ! -z "$CHANNEL_NAME" ]; then
+    echo "🔗 Waiting for ${PEER_NAME} to initialize (8s)..."
+    sleep 8
+    
+    BLOCK_PATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts/${CHANNEL_NAME}.block"
+    ADMIN_MSP="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp"
+    TLS_ROOT="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/peers/${PEER_NAME}/tls/ca.crt"
+    PEER_CERT="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/peers/${PEER_NAME}/tls/server.crt"
+    PEER_KEY="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/peers/${PEER_NAME}/tls/server.key"
+
+    echo "🔗 Joining ${PEER_NAME} to channel ${CHANNEL_NAME}..."
+    docker exec \
+      -e CORE_PEER_ADDRESS="${PEER_NAME}:7051" \
+      -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
+      -e CORE_PEER_MSPCONFIGPATH="${ADMIN_MSP}" \
+      -e CORE_PEER_TLS_CERT_FILE="${PEER_CERT}" \
+      -e CORE_PEER_TLS_KEY_FILE="${PEER_KEY}" \
+      -e CORE_PEER_TLS_ROOTCERT_FILE="${TLS_ROOT}" \
+      cli peer channel join -b "${BLOCK_PATH}"
+    
+    echo "✅ SUCCESS: ${PEER_NAME} joined ${CHANNEL_NAME}."
+else
+    echo "✅ Node is UP. To join a channel manually, use: docker exec cli peer channel join -b <block> (with correct env)"
+fi

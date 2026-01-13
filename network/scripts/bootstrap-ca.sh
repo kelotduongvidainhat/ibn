@@ -51,7 +51,7 @@ export FABRIC_CFG_PATH="${NETWORK_DIR}"
 
 # 6. Start Rest of Network
 echo "--- Launching Orderer, Peer, and CLI ---"
-docker-compose -f "${NETWORK_DIR}/docker-compose.yaml" up -d orderer.example.com peer0.org1.example.com cli
+docker-compose -f "${NETWORK_DIR}/docker-compose.yaml" up -d orderer.example.com peer0.org1.example.com couchdb0 cli
 
 # 7. Wait for nodes
 echo "--- Waiting for network nodes (10s) ---"

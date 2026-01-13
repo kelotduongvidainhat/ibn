@@ -187,19 +187,35 @@ if [ $UPDATE_RESULT -eq 0 ]; then
     done
 
     echo "🗳️ Submitting channel update..."
-    docker exec \
-      -e CORE_PEER_LOCALMSPID="Org1MSP" \
-      -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp" \
-      cli peer channel update -f update_in_envelope.pb -c "${CHANNEL_NAME}" -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt
+    MAX_RETRIES=5
+    RETRY_COUNT=0
+    SUCCESS=false
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        set +e
+        docker exec \
+          -e CORE_PEER_LOCALMSPID="Org1MSP" \
+          -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp" \
+          cli peer channel update -f update_in_envelope.pb -c "${CHANNEL_NAME}" -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt
+        
+        if [ $? -eq 0 ]; then
+            SUCCESS=true
+            set -e
+            break
+        else
+            RETRY_COUNT=$((RETRY_COUNT+1))
+            echo "⚠️ Channel update failed (attempt $RETRY_COUNT/$MAX_RETRIES). Retrying in 5s..."
+            sleep 5
+        fi
+        set -e
+    done
+    if [ "$SUCCESS" = false ]; then echo "❌ ERROR: Failed to submit channel update."; exit 1; fi
 else
     echo "ℹ️ Skipping channel update: Organization already exists in channel or no changes detected."
 fi
 
 # 5. Bring Peer Online and Join
 echo "🏢 Starting Peer..."
-"${SCRIPTS_DIR}/add-peer.sh" peer0 "${ORG_NAME}"
-sleep 5
-"${SCRIPTS_DIR}/peer-join-channel.sh" peer0 "${ORG_NAME}" "${CHANNEL_NAME}"
+"${SCRIPTS_DIR}/add-peer.sh" peer0 "${ORG_NAME}" "${CHANNEL_NAME}"
 
 # 6. Chaincode Lifecycle
 echo "📦 Finalizing Chaincode Lifecycle for ${ORG_NAME}..."
@@ -212,14 +228,32 @@ docker exec \
   -e CORE_PEER_TLS_ROOTCERT_FILE="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/peers/peer0.${DOMAIN}/tls/ca.crt" \
   cli peer lifecycle chaincode install /opt/gopath/src/github.com/hyperledger/fabric/peer/packaging/basic.tar.gz
 
-docker exec \
-  -e CORE_PEER_ADDRESS="peer0.${DOMAIN}:7051" \
-  -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
-  -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp" \
-  -e CORE_PEER_TLS_ROOTCERT_FILE="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/peers/peer0.${DOMAIN}/tls/ca.crt" \
-  cli peer lifecycle chaincode approveformyorg \
-    --channelID "${CHANNEL_NAME}" --name basic --version 1.0 \
-    --package-id "${PACKAGE_ID}" --sequence 1 --tls \
-    --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt
+    MAX_RETRIES=5
+    RETRY_COUNT=0
+    SUCCESS=false
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        set +e
+        docker exec \
+          -e CORE_PEER_ADDRESS="peer0.${DOMAIN}:7051" \
+          -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
+          -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp" \
+          -e CORE_PEER_TLS_ROOTCERT_FILE="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/peers/peer0.${DOMAIN}/tls/ca.crt" \
+          cli peer lifecycle chaincode approveformyorg \
+            --channelID "${CHANNEL_NAME}" --name basic --version 1.0 \
+            --package-id "${PACKAGE_ID}" --sequence 1 --tls \
+            --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt
+        
+        if [ $? -eq 0 ]; then
+            SUCCESS=true
+            set -e
+            break
+        else
+            RETRY_COUNT=$((RETRY_COUNT+1))
+            echo "⚠️ CC Approval failed (attempt $RETRY_COUNT/$MAX_RETRIES). Retrying in 5s..."
+            sleep 5
+        fi
+        set -e
+    done
+    if [ "$SUCCESS" = false ]; then echo "❌ ERROR: Failed to approve chaincode."; exit 1; fi
 
 echo "✅ [SUCCESS] ${ORG_NAME} has been added and integrated!"

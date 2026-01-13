@@ -12,7 +12,8 @@ This project implements a high-performance, production-grade Hyperledger Fabric 
 - [x] **Phase 4: Backend API** (Fabric Gateway, REST Endpoints)
 - [x] **Phase 6: Fabric CA Integration** (Mutual TLS, Authority-based Enrollment)
 - [x] **Phase 5: Advanced Logic** (History, Transfers, Automated Scaling)
-- [🚧] **Phase 6: Multi-Org Endorsement** (6-Org Network, Majority Policy Tests)
+- [x] **Phase 6: Rich Queries & CouchDB** (CouchDB Migration, Selector Queries)
+- [🚧] **Phase 7: Asset Marketplace** (Soft Deletes, IPFS Integration)
 
 ## 🏗️ Project Structure
 
@@ -38,8 +39,14 @@ The entire network can be managed via the **ibn-ctl** Terminal Suite:
 
 ## 🚀 Getting Started
 
-### 1. Build & Start Network (Auto-CA)
-Run the automated bootstrap script to launch CAs, enroll identities, and create the channel:
+### 1. Build & Start Network (Full 6-Org Build)
+The recommended way to build the complete 6-organization network from scratch:
+```bash
+./fresh-start.sh
+```
+
+### 2. Build & Start Network (Minimal)
+Run the automated bootstrap script to launch just Org1 and the Orderer:
 ```bash
 ./network/scripts/bootstrap-ca.sh
 ```
@@ -67,7 +74,8 @@ docker exec cli peer chaincode query -C mychannel -n basic -c '{"Args":["ReadAss
 The network includes a suite of automation scripts for advanced operations and scaling:
 
 ### 1. Unified Setup & Deployment
-*   **`bootstrap-ca.sh`**: The master script. Cleans environment, starts CAs, enrolls nodes, and joins them to the channel.
+*   **`fresh-start.sh`**: The "Big Bang" script. Fully wipes the network and automates the scaling to 6 organizations, deployment of chaincode, and startup of the Backend API.
+*   **`bootstrap-ca.sh`**: The master setup script for a minimal network (Org1 + Orderer).
 *   **`deploy-caas.sh`**: Handles the full Fabric lifecycle (Install -> Approve -> Commit) for Chaincode-as-a-Service.
 
 ### 2. Network Scaling
@@ -91,6 +99,8 @@ The network includes a suite of automation scripts for advanced operations and s
 
 ### 4. Backend Admin API
 The network management toolkit is exposed via REST API for remote integration:
+*   `GET  /api/assets` - List all assets
+*   `GET  /api/assets/query?query={...}` - Execute CouchDB Rich Query
 *   `GET  /api/admin/health` - Execute network health check
 *   `GET  /api/admin/resources` - Fetch real-time docker metrics
 *   `POST /api/admin/approve` - Trigger batch chaincode approval
@@ -104,6 +114,8 @@ The network management toolkit is exposed via REST API for remote integration:
 ## 🏗 Features Enabled
 - **Fabric CA Integration**: Dynamic identity management with dedicated CAs for Org1 and Orderer.
 - **Node OUs**: Automated role identification (Admin vs Peer vs Client).
+- **CouchDB State Database**: Supports complex JSON queries and indexing.
+- **Rich Query Support**: Search assets by any attribute using standard CouchDB selectors.
 - **CaaS Workflow**: Chaincode runs as an external service for instant development cycles.
 - **Mutual TLS**: Enforced across all boundaries with host-validated certificates.
 - **Modern Channeling**: Uses `osnadmin` and Application Channel Participation.

@@ -24,6 +24,15 @@ This directory contains the production-grade configuration for the Hyperledger F
     ┗━━ 🔑 Identity: Admin@org1.example.com (Enrolled via CA)
 ```
 
+## 🗄️ State Database (CouchDB)
+
+The network uses **CouchDB** instead of LevelDB to support rich JSON queries. Every peer is paired with a dedicated CouchDB container.
+
+*   **Org1 CouchDB**: [http://localhost:5984/_utils](http://localhost:5984/_utils)
+*   **Org2 CouchDB**: [http://localhost:6984/_utils](http://localhost:6984/_utils)
+*   **Org3 CouchDB**: [http://localhost:7984/_utils](http://localhost:7984/_utils)
+*   **Credentials**: `admin` / `adminpw`
+
 ## 📂 Key Files
 
 - **`docker-compose.yaml`**: defines CA services, Orderer, Peer, and CLI.

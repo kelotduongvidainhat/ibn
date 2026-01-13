@@ -45,6 +45,13 @@ curl -X POST http://localhost:8080/api/assets \
 curl -X GET http://localhost:8080/api/assets/asset99
 ```
 
+### 💎 Rich Query (New!)
+Search for all assets with a specific color:
+```bash
+curl -G "http://localhost:8080/api/assets/query" \
+  --data-urlencode 'query={"selector":{"Color":"gold"}}' | jq .
+```
+
 ## 🔍 Path to Troubleshooting
 - **Logs**: `docker logs -f peer0.org1.example.com` or `docker logs -f chaincode-basic`.
 - **Clean Start**: `./network/scripts/bootstrap-ca.sh` handles cleaning for you.

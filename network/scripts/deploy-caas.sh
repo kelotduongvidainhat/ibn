@@ -36,15 +36,38 @@ fi
 
 # 2. Approve Chaincode
 echo "--- Approving chaincode for Org1 ---"
-docker exec cli peer lifecycle chaincode approveformyorg \
-  -o orderer.example.com:7050 \
-  --ordererTLSHostnameOverride orderer.example.com \
-  --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt \
-  --channelID "${CHANNEL_NAME}" \
-  --name "${CC_NAME}" \
-  --version "${CC_VERSION}" \
-  --package-id "${PACKAGE_ID}" \
-  --sequence "${CC_SEQUENCE}"
+MAX_RETRIES=5
+RETRY_COUNT=0
+SUCCESS=false
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    set +e
+    docker exec cli peer lifecycle chaincode approveformyorg \
+      -o orderer.example.com:7050 \
+      --ordererTLSHostnameOverride orderer.example.com \
+      --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt \
+      --channelID "${CHANNEL_NAME}" \
+      --name "${CC_NAME}" \
+      --version "${CC_VERSION}" \
+      --package-id "${PACKAGE_ID}" \
+      --sequence "${CC_SEQUENCE}"
+    
+    if [ $? -eq 0 ]; then
+        SUCCESS=true
+        set -e
+        break
+    else
+        RETRY_COUNT=$((RETRY_COUNT+1))
+        echo "⚠️ Approval failed (attempt $RETRY_COUNT/$MAX_RETRIES). Waiting for Orderer Raft leader..."
+        sleep 5
+    fi
+    set -e
+done
+
+if [ "$SUCCESS" = false ]; then
+    echo "❌ ERROR: Failed to approve chaincode after $MAX_RETRIES attempts."
+    exit 1
+fi
 
 # 3. Check Commit Readiness
 echo "--- Checking commit readiness ---"
@@ -56,15 +79,7 @@ docker exec cli peer lifecycle chaincode checkcommitreadiness \
   --output json
 
 # 4. Commit Chaincode
-echo "--- Committing chaincode definition ---"
-docker exec cli peer lifecycle chaincode commit \
-  -o orderer.example.com:7050 \
-  --ordererTLSHostnameOverride orderer.example.com \
-  --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt \
-  --channelID "${CHANNEL_NAME}" \
-  --name "${CC_NAME}" \
-  --version "${CC_VERSION}" \
-  --sequence "${CC_SEQUENCE}"
+"${NETWORK_DIR}/scripts/mass-commit.sh" "${CC_NAME}" "${CC_VERSION}" "${CC_SEQUENCE}" "${CHANNEL_NAME}"
 
 # 5. Final Report
 echo "--- Chaincode Deployment Complete ---"

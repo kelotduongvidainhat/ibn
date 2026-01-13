@@ -53,3 +53,41 @@ func (h *AssetHandler) ReadAsset(c *gin.Context) {
 
 	c.JSON(http.StatusOK, asset)
 }
+
+func (h *AssetHandler) GetAllAssets(c *gin.Context) {
+	evaluateResult, err := h.Contract.EvaluateTransaction("GetAllAssets")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to evaluate transaction: " + err.Error()})
+		return
+	}
+
+	var assets []models.Asset
+	if err := json.Unmarshal(evaluateResult, &assets); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unmarshal result: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, assets)
+}
+
+func (h *AssetHandler) QueryAssets(c *gin.Context) {
+	queryString := c.Query("query")
+	if queryString == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "query parameter is required"})
+		return
+	}
+
+	evaluateResult, err := h.Contract.EvaluateTransaction("QueryAssets", queryString)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to evaluate transaction: " + err.Error()})
+		return
+	}
+
+	var assets []models.Asset
+	if err := json.Unmarshal(evaluateResult, &assets); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unmarshal result: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, assets)
+}

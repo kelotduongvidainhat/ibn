@@ -66,6 +66,8 @@ func main() {
 
 	api := r.Group("/api")
 	{
+		api.GET("/assets", assetHandler.GetAllAssets)
+		api.GET("/assets/query", assetHandler.QueryAssets)
 		api.POST("/assets", assetHandler.CreateAsset)
 		api.GET("/assets/:id", assetHandler.ReadAsset)
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/json" // Used for marshaling/unmarshaling JSON data
 	"fmt"           // Used for formatted I/O operations
 
+	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/hyperledger/fabric-contract-api-go/contractapi" // Main Fabric Contract API
 )
 
@@ -104,11 +105,59 @@ func (s *SmartContract) ReadAsset(ctx contractapi.TransactionContextInterface, i
 
 // AssetExists returns true when asset with given ID exists in world state
 func (s *SmartContract) AssetExists(ctx contractapi.TransactionContextInterface, id string) (bool, error) {
-	// Get State returns nil if no value is found under the key
 	assetJSON, err := ctx.GetStub().GetState(id)
 	if err != nil {
 		return false, fmt.Errorf("failed to read from world state: %v", err)
 	}
 
-	return assetJSON != nil, nil // Return true if data was found
+	return assetJSON != nil, nil
+}
+
+// QueryAssets executes a rich query string against the state database (CouchDB)
+func (s *SmartContract) QueryAssets(ctx contractapi.TransactionContextInterface, queryString string) ([]*Asset, error) {
+	fmt.Printf("DEBUG: QueryAssets called with query: %s\n", queryString)
+	resultsIterator, err := ctx.GetStub().GetQueryResult(queryString)
+	if err != nil {
+		return nil, err
+	}
+	defer resultsIterator.Close()
+
+	return constructQueryResponseFromIterator(resultsIterator)
+}
+
+// GetAssetsByColor demonstrates a specialized high-level query
+func (s *SmartContract) GetAssetsByColor(ctx contractapi.TransactionContextInterface, color string) ([]*Asset, error) {
+	queryString := fmt.Sprintf(`{"selector":{"Color":"%s"}}`, color)
+	return s.QueryAssets(ctx, queryString)
+}
+
+// GetAllAssets returns all assets found in world state
+func (s *SmartContract) GetAllAssets(ctx contractapi.TransactionContextInterface) ([]*Asset, error) {
+	resultsIterator, err := ctx.GetStub().GetStateByRange("", "")
+	if err != nil {
+		return nil, err
+	}
+	defer resultsIterator.Close()
+
+	return constructQueryResponseFromIterator(resultsIterator)
+}
+
+// constructQueryResponseFromIterator is a helper to parse iterator results into an Asset slice
+func constructQueryResponseFromIterator(resultsIterator shim.StateQueryIteratorInterface) ([]*Asset, error) {
+	var assets []*Asset
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		var asset Asset
+		err = json.Unmarshal(queryResponse.Value, &asset)
+		if err != nil {
+			return nil, err
+		}
+		assets = append(assets, &asset)
+	}
+
+	return assets, nil
 }
