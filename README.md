@@ -4,6 +4,8 @@ This project implements a high-performance, production-grade Hyperledger Fabric 
 
 ## ✨ Quick Access
 👉 **[Read the 5-Minute QUICKSTART.md](./QUICKSTART.md)**
+🗺️ **[View the Project ROADMAP.md](./ROADMAP.md)**
+🏛️ **[Review the Platform ARCHITECTURE.md](./ARCHITECTURE.md)**
 
 ## ✅ Project Status
 - [x] **Phase 1: Planning & Setup** (Multi-CA Architecture)
