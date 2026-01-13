@@ -11,7 +11,8 @@ This project implements a high-performance, production-grade Hyperledger Fabric 
 - [x] **Phase 3: Smart Contract (CaaS)** (Go Contract, Dockerized Service)
 - [x] **Phase 4: Backend API** (Fabric Gateway, REST Endpoints)
 - [x] **Phase 6: Fabric CA Integration** (Mutual TLS, Authority-based Enrollment)
-- [🚧] **Phase 5: Advanced Logic** (History, Transfers, Automated Scripts)
+- [x] **Phase 5: Advanced Logic** (History, Transfers, Automated Scaling)
+- [🚧] **Phase 6: Multi-Org Endorsement** (6-Org Network, Majority Policy Tests)
 
 ## 🏗️ Project Structure
 
@@ -27,6 +28,12 @@ This project implements a high-performance, production-grade Hyperledger Fabric 
 │   ├── cmd/             # CaaS server wrapper entry point
 │   └── Dockerfile       # Container definition for the CC service
 └── README.md            # Overall project status
+```
+
+## 🕹️ Master Control
+The entire network can be managed via the **ibn-ctl** Terminal Suite:
+```bash
+./ibn-ctl
 ```
 
 ## 🚀 Getting Started
@@ -64,22 +71,33 @@ The network includes a suite of automation scripts for advanced operations and s
 *   **`deploy-caas.sh`**: Handles the full Fabric lifecycle (Install -> Approve -> Commit) for Chaincode-as-a-Service.
 
 ### 2. Network Scaling
+*   **`add-org.sh <num>`**:
+    *   **Automation**: The "Org Factory." Provisions a new CA, registers identities, and performs the multi-signature "Admin Dance" to admit a new organization to the channel.
+    *   **Example**: `./network/scripts/add-org.sh 4`
 *   **`add-peer.sh <name> <org>`**: 
-    *   **Automation**: Registers node with CA, issues TLS certs, and injects a new service into `docker-compose.yaml` with smart port allocation.
-    *   **Example**: `./network/scripts/add-peer.sh peer3 org1`
+    *   **Automation**: Registers node with CA, issues TLS certs, and dynamically injects a new peer service into `docker-compose.yaml` with smart port allocation.
 *   **`peer-join-channel.sh <name> <org> <channel>`**:
-    *   **Automation**: Flexibly joins any existing physical peer to any active logical channel.
-    *   **Example**: `./network/scripts/peer-join-channel.sh peer3 org1 mychannel`
-*   **`remove-peer.sh <name> <org>`**:
-    *   **Automation**: Safely stops containers, removes volumes, and cleans up YAML configurations to shrink the network.
-    *   **Example**: `./network/scripts/remove-peer.sh peer1 org1`
+    *   **Logic**: Joins a provisioned physical peer to an active logical channel.
 
-### 3. Scaling the Network (Org Factory)
-*   **Blueprint**: See `addOrg3.sh` in the root and `network/scripts/add-org.sh` (concept) for how to dynamically admit entire new organizations using CA enrollments and channel configuration transaction updates.
+### 3. Lifecycle & Monitoring
+*   **`mass-approve.sh` & `mass-commit.sh`**:
+    *   **Scale**: Automates chaincode updates across all organizations in a single step—critical for large consortiums (e.g., our 6-Org setup).
+*   **`network-health.sh`**:
+    *   **Diagnostics**: Checks ledger synchronization and block heights across every node in the network.
+*   **`network-resource-monitor.sh`**:
+    *   **Performance**: Real-time CPU/RAM/Network dashboard grouped by Organization.
+*   **`profile-gen.sh`**:
+    *   **Integration**: Generates portable Connection Profile JSONs for app development.
 
-### 3. Cleanup & Maintenance
+### 4. Backend Admin API
+The network management toolkit is exposed via REST API for remote integration:
+*   `GET  /api/admin/health` - Execute network health check
+*   `GET  /api/admin/resources` - Fetch real-time docker metrics
+*   `POST /api/admin/approve` - Trigger batch chaincode approval
+*   `POST /api/admin/commit` - Trigger batch chaincode commit
+
+### 4. Cleanup & Maintenance
 *   **`network-down.sh`**: Safely teardowns all containers, wipes persistent volumes, and resets the cryptographic state.
-*   **`register-user.sh`**: (Planned) Automate client identity creation for application users.
 
 ---
 

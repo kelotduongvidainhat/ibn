@@ -70,6 +70,16 @@ This network includes advanced scripts for managing nodes and scaling without re
     - Cleans up filesystem identities.
 - **`scripts/peer-join-channel.sh <peer_id> <org_name> <channel_name>`**:
     - High-level script to join any provisioned peer to any existing channel.
+- **`scripts/mass-approve.sh <name> <version> <seq>`**:
+    - Batch approves a chaincode definition across all organizations in the network.
+- **`scripts/mass-commit.sh <name> <version> <seq>`**:
+    - Build endorsement flags and commits approved chaincode to the channel.
+- **`scripts/profile-gen.sh`**:
+    - Generates portable, certificate-embedded Connection Profiles (JSON) for all Orgs.
+- **`scripts/network-health.sh`**:
+    - Diagnostic dashboard checking ledger synchronization and block height logic.
+- **`scripts/network-resource-monitor.sh`**:
+    - Real-time container monitoring (CPU/RAM/NET) grouped by organization.
 - **`scripts/network-down.sh`**:
     - Performs an exhausted cleanup of all Fabric containers, volumes, and cryptographic material.
 

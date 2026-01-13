@@ -62,11 +62,20 @@ func main() {
 
 	// 6. Routes
 	assetHandler := &handlers.AssetHandler{Contract: contract}
-	
+	adminHandler := handlers.NewAdminHandler()
+
 	api := r.Group("/api")
 	{
 		api.POST("/assets", assetHandler.CreateAsset)
 		api.GET("/assets/:id", assetHandler.ReadAsset)
+	}
+
+	admin := r.Group("/api/admin")
+	{
+		admin.GET("/health", adminHandler.RunHealthCheck)
+		admin.GET("/resources", adminHandler.GetResourceUsage)
+		admin.POST("/approve", adminHandler.MassApprove)
+		admin.POST("/commit", adminHandler.MassCommit)
 	}
 
 	// 7. Start Server
@@ -74,7 +83,7 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	
+
 	log.Printf("Backend API server starting on :%s", port)
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Failed to run server: %v", err)

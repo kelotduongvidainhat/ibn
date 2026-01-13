@@ -1,0 +1,111 @@
+#!/bin/bash
+# ibn-ctl - Master Terminal Suite for IBN Network
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPTS_DIR="${PROJECT_ROOT}/network/scripts"
+
+# Colors for UI
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+BOLD='\033[1m'
+
+function show_header() {
+    clear
+    echo -e "${CYAN}${BOLD}"
+    echo "  ██╗██████╗ ███╗   ██╗      ██████╗████████╗██╗     "
+    echo "  ██║██╔══██╗████╗  ██║     ██╔════╝╚══██╔══╝██║     "
+    echo "  ██║██████╔╝██╔██╗ ██║     ██║        ██║   ██║     "
+    echo "  ██║██╔══██╗██║╚██╗██║     ██║        ██║   ██║     "
+    echo "  ██║██████╔╝██║ ╚████║     ╚██████╗   ██║   ███████╗"
+    echo "  ╚═╝╚═════╝ ╚═╝  ╚═══╝      ╚═════╝   ╚═╝   ╚══════╝"
+    echo -e "         ${BLUE}The Superadmin Blockchain Toolkit${NC}\n"
+}
+
+function usage() {
+    echo -e "Usage: ${BOLD}./ibn-ctl [command]${NC}"
+    echo ""
+    echo "Commands:"
+    echo "  health      Check ledger heights and synchronization"
+    echo "  stats       Monitor CPU/RAM/Network resources"
+    echo "  scale       Add a new organization to the network"
+    echo "  peer        Add a new peer to an existing organization"
+    echo "  deploy      Lifecycle: Approve and Commit chaincode (Batch)"
+    echo "  profiles    Generate Connection Profiles for all orgs"
+    echo "  onboard     Register/Enroll a new client user"
+    echo "  down        Stop and wipe the entire network"
+    echo "  -i          Enter Interactive Menu mode (default)"
+    echo ""
+}
+
+function interactive_menu() {
+    while true; do
+        show_header
+        echo -e "${BOLD}MAIN MENU${NC}"
+        echo "1) 🏥 Network Health        Check sync and ledger status"
+        echo "2) 📊 Resource Monitor      Real-time CPU/RAM/NET dashboard"
+        echo "3) 🏗️  Scale Network      Add a new Organization (Org Factory)"
+        echo "4) 📦 Chaincode Lifecycle   Approve & Commit (Batch Mode)"
+        echo "5) 📇 Generate Profiles     Create SDK Connection JSONs"
+        echo "6) 👤 Onboard Client       Register new app user"
+        echo "7) 🛑 Network Shutdown     Stop and wipe all data"
+        echo "8) 🚪 Exit"
+        echo ""
+        read -p "Select an option: " opt
+
+        case $opt in
+            1) "${SCRIPTS_DIR}/network-health.sh" ;;
+            2) "${SCRIPTS_DIR}/network-resource-monitor.sh" ;;
+            3) 
+                read -p "Enter Org Number (e.g. 7): " orgnum
+                "${SCRIPTS_DIR}/add-org.sh" "$orgnum"
+                ;;
+            4)
+                read -p "CC Name (basic): " ccname
+                ccname=${ccname:-basic}
+                read -p "Version (1.0): " ccver
+                ccver=${ccver:-1.0}
+                read -p "Sequence: " ccseq
+                "${SCRIPTS_DIR}/mass-approve.sh" "$ccname" "$ccver" "$ccseq"
+                "${SCRIPTS_DIR}/mass-commit.sh" "$ccname" "$ccver" "$ccseq"
+                ;;
+            5) "${SCRIPTS_DIR}/profile-gen.sh" ;;
+            6)
+                read -p "Client ID: " cid
+                read -p "Org Name (org1): " oname
+                "${SCRIPTS_DIR}/enroll-client.sh" "$cid" "$oname"
+                ;;
+            7) 
+                echo -e "${RED}${BOLD}WARNING: This will delete ALL ledger data.${NC}"
+                read -p "Are you sure? (y/N): " confirm
+                if [[ $confirm == [yY] ]]; then "${SCRIPTS_DIR}/network-down.sh"; fi
+                ;;
+            8) exit 0 ;;
+            *) echo -e "${RED}Invalid option${NC}" ;;
+        esac
+        echo -e "\n${YELLOW}Press Enter to return to menu...${NC}"
+        read
+    done
+}
+
+# Main routing
+if [ -z "$1" ] || [ "$1" == "-i" ]; then
+    interactive_menu
+else
+    case $1 in
+        health)   "${SCRIPTS_DIR}/network-health.sh" ;;
+        stats)    "${SCRIPTS_DIR}/network-resource-monitor.sh" ;;
+        scale)    "${SCRIPTS_DIR}/add-org.sh" "$2" ;;
+        peer)     "${SCRIPTS_DIR}/add-peer.sh" "$2" "$3" ;;
+        approve)  "${SCRIPTS_DIR}/mass-approve.sh" "$2" "$3" "$4" ;;
+        commit)   "${SCRIPTS_DIR}/mass-commit.sh" "$2" "$3" "$4" ;;
+        profiles) "${SCRIPTS_DIR}/profile-gen.sh" ;;
+        onboard)  "${SCRIPTS_DIR}/enroll-client.sh" "$2" "$3" ;;
+        down)     "${SCRIPTS_DIR}/network-down.sh" ;;
+        help)     usage ;;
+        *)        echo -e "${RED}Unknown command: $1${NC}"; usage; exit 1 ;;
+    esac
+fi

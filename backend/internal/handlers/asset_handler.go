@@ -21,11 +21,11 @@ func (h *AssetHandler) CreateAsset(c *gin.Context) {
 		return
 	}
 
-	_, err := h.Contract.SubmitTransaction("CreateAsset", 
-		asset.ID, 
-		asset.Color, 
-		fmt.Sprintf("%d", asset.Size), 
-		asset.Owner, 
+	_, err := h.Contract.SubmitTransaction("CreateAsset",
+		asset.ID,
+		asset.Color,
+		fmt.Sprintf("%d", asset.Size),
+		asset.Owner,
 		fmt.Sprintf("%d", asset.AppraisedValue))
 
 	if err != nil {
