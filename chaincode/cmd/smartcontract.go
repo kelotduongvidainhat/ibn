@@ -48,6 +48,7 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 
 // CreateAsset issues a new asset to the world state
 func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface, id string, color string, size int, owner string, appraisedValue int) error {
+	fmt.Printf("DEBUG: CreateAsset called for ID: %s, Color: %s, Size: %d, Owner: %s, Value: %d\n", id, color, size, owner, appraisedValue)
 	// Check if asset already exists
 	exists, err := s.AssetExists(ctx, id)
 	if err != nil {
@@ -73,17 +74,20 @@ func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface,
 	}
 
 	// Put the asset on the ledger (key-value pair)
+	fmt.Printf("DEBUG: Putting state for %s\n", id)
 	return ctx.GetStub().PutState(id, assetJSON)
 }
 
 // ReadAsset returns the asset stored in the world state with given id
 func (s *SmartContract) ReadAsset(ctx contractapi.TransactionContextInterface, id string) (*Asset, error) {
+	fmt.Printf("DEBUG: ReadAsset called for ID: %s\n", id)
 	// Retrieve the asset from the ledger
 	assetJSON, err := ctx.GetStub().GetState(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read from world state: %v", err)
 	}
 	if assetJSON == nil {
+		fmt.Printf("DEBUG: Asset %s not found\n", id)
 		return nil, fmt.Errorf("the asset %s does not exist", id) // Error if not found
 	}
 
@@ -94,6 +98,7 @@ func (s *SmartContract) ReadAsset(ctx contractapi.TransactionContextInterface, i
 		return nil, err // Return if unmarshaling fails
 	}
 
+	fmt.Printf("DEBUG: Asset found: %+v\n", asset)
 	return &asset, nil // Return the asset object
 }
 

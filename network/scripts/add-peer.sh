@@ -17,23 +17,22 @@ NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN_DIR="${NETWORK_DIR}/../bin"
 export PATH="${BIN_DIR}:${PATH}"
 
-# --- CONFIGURATION MAPPING ---
-case "${ORG_NAME}" in
-    "org1")
-        DOMAIN="org1.example.com"
-        MSP_ID="Org1MSP"
-        CA_PORT=7054
-        ;;
-    "org2")
-        DOMAIN="org2.example.com"
-        MSP_ID="Org2MSP"
-        CA_PORT=8054
-        ;;
-    *)
-        echo "Error: Unknown organization ${ORG_NAME}"
-        exit 1
-        ;;
-esac
+# --- DYNAMIC CONFIGURATION ---
+ORG_NUM=$(echo $ORG_NAME | grep -o '[0-9]\+')
+if [ -z "$ORG_NUM" ]; then
+    echo "Error: Organization name must contain a number (e.g. org1)"
+    exit 1
+fi
+DOMAIN="${ORG_NAME}.example.com"
+MSP_ID="Org${ORG_NUM}MSP"
+
+# CA Port logic (matching add-org.sh)
+CA_PORT=$((7054 + (ORG_NUM-1)*1000))
+if [ $CA_PORT -eq 9054 ]; then 
+    CA_PORT=10054
+elif [ $CA_PORT -ge 10054 ]; then 
+    CA_PORT=$((CA_PORT+1000))
+fi
 
 PEER_NAME="${PEER_ID}.${DOMAIN}"
 ORG_ROOT_CERT="${NETWORK_DIR}/organizations/fabric-ca/${ORG_NAME}/ca-cert.pem"

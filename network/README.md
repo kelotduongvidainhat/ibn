@@ -52,10 +52,15 @@ The recommended way to start is:
 
 This network includes advanced scripts for managing nodes and scaling without restarting the entire fabric:
 
+- **`scripts/add-org.sh <org_num> [channel_name]`**: 
+    - The "Org Factory" script.
+    - Automates CA setup, Org registration, and the Multi-Signature "Admin Dance".
+    - Automatically collects signatures from existing organizations to satisfy MAJORITY policies.
 - **`scripts/add-peer.sh <peer_id> <org_name>`**: 
     - Registers/Enrolls a new peer identity with the Fabric CA.
     - Dynamically injects the peer service into `docker-compose.yaml`.
     - Automatically calculates unique ports to avoid collisions.
+    - **Now fully dynamic**: Supports any organization number.
 - **`scripts/remove-peer.sh <peer_id> <org_name>`**: 
     - Stops and removes the peer container and volumes.
     - Removes the service definition from `docker-compose.yaml`.
@@ -67,13 +72,18 @@ This network includes advanced scripts for managing nodes and scaling without re
 
 ## 🏢 Scaling the Network (Org Factory)
 
-The network is designed to be extensible. Adding a new organization involves:
-1. Creating a new CA.
-2. Generating a new Org MSP definition.
-3. Updating the channel configuration via a "Config Update Dance" (transaction update).
-4. Joining the new Org's peers.
+The network is now equipped with an automation engine. Scaling is as simple as:
 
-*Refer to `addOrg3.sh` in the root for a blueprint of this process.*
+```bash
+# Add Organization 4 to the default channel
+./network/scripts/add-org.sh 4
+```
+
+This script handles the entire lifecycle:
+1. **Constitutional Patching**: Updates `configtx.yaml` and `docker-compose.yaml`.
+2. **Identity Creation**: Provisions a new CA and enrolls Peer/Admin identities.
+3. **The Admin Dance**: Fetches channel config, injects the new Org, and collects consensus signatures.
+4. **Integration**: Joins the new Peer and synchronizes the Chaincode definition.
 
 ## 📜 Role-Based Access (NodeOUs)
 ...
