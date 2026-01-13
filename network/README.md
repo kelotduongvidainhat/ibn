@@ -56,6 +56,9 @@ This network includes advanced scripts for managing nodes and scaling without re
     - The "Org Factory" script.
     - Automates CA setup, Org registration, and the Multi-Signature "Admin Dance".
     - Automatically collects signatures from existing organizations to satisfy MAJORITY policies.
+- **`scripts/enroll-client.sh <client_id> <org_name>`**:
+    - Registers/Enrolls a new end-user or application identity.
+    - Generates a **Connection Profile (JSON)** for the SDK to use.
 - **`scripts/add-peer.sh <peer_id> <org_name>`**: 
     - Registers/Enrolls a new peer identity with the Fabric CA.
     - Dynamically injects the peer service into `docker-compose.yaml`.
