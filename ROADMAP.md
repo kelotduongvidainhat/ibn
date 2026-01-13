@@ -14,11 +14,12 @@ This document outlines the strategic progression of the IBN (Integrated Blockcha
 
 ---
 
-## 🚀 Phase 7: Multi-Application Deployment (Current)
-*   **[ ] Application 1: Tea-Tracking**: Deploy a supply-chain focused channel with provenance logic (harvest origin, batch IDs, quality certificates).
-*   **[ ] Application 2: Owner-Registry**: Deploy a registry focused channel for legal titles and property ownership history.
-*   **[ ] Private Data Collections (PDC)**: Implement "Side DBs" for sensitive application data (e.g., owner contact info) visible only to designated Orgs.
-*   **[ ] Custom Channel Governance**: Define unique endorsement policies for each application (e.g., Tea-Tracking requires 1/N, whereas Ownership Registry requires 2/N).
+## 🚀 Phase 7: Platform Orchestration & Scaling (Current)
+*   **[ ] Multi-Channel Automation**: Create scripts to dynamically provision new application channels without manual "Admin Dances."
+*   **[ ] Chaincode Multi-Tenancy**: Configure the backend to support concurrent connections to different chaincodes across various channels.
+*   **[ ] Advanced Endorsement Patterns**: Implement a library of endorsement policy templates (e.g., Majority, AnyOne, All-Or-None) for different governance models.
+*   **[ ] Private Data Collections (PDC)**: Establish standard patterns for managing sensitive data using side-databases that are decoupled from specific app logic.
+*   **[ ] Inter-Channel Communication**: Research and implement logic for sharing specific state/assets between channels safely.
 
 ---
 
@@ -38,15 +39,7 @@ This document outlines the strategic progression of the IBN (Integrated Blockcha
 
 ---
 
-## 🏗️ Phase 10: Multi-Channel Orchestration (Vision)
-*   **[ ] Dynamic Channel Creation**: API-driven automation to spin up new channels for new applications/tenants.
-*   **[ ] Application Isolation**: Support multiple different Chaincodes (Smart Contracts) running concurrently on dedicated channels.
-*   **[ ] Inter-Channel Communication**: Implement logic for sharing specific state/assets between channels safely.
-*   **[ ] Unified Identity**: Single CA hierarchy serving multiple applications across different logical boundaries.
-
----
-
-## 📊 Phase 11: Observability & DevSecOps
+## 📊 Phase 10: Observability & DevSecOps
 *   **[ ] Monitoring Dashboards**: Prometheus exporters for Fabric metrics + Grafana visualization.
 *   **[ ] ELK Stack Integration**: Centralized logging for all 6 Organizations and Orderers.
 *   **[ ] Block Visualizer**: Implement a lightweight block explorer to track transaction flow in real-time.
@@ -54,7 +47,7 @@ This document outlines the strategic progression of the IBN (Integrated Blockcha
 
 ---
 
-## 🌐 Phase 12: Production & Scaling (Mainnet Readiness)
+## 🌐 Phase 11: Production & Scaling (Mainnet Readiness)
 *   **[ ] Kubernetes (K8s) Orchestration**: Transition Docker-compose to Helm Charts for multi-host deployment.
 *   **[ ] Intermediate CAs**: Implement a multi-tier CA hierarchy for production-grade security.
 *   **[ ] External Builders**: Secure the CaaS builder interface for enterprise environments.
@@ -65,7 +58,7 @@ This document outlines the strategic progression of the IBN (Integrated Blockcha
 | Milestone | Status | Target Date |
 | :--- | :--- | :--- |
 | Foundation & CouchDB | Completed | Jan 2026 |
-| Marketplace & Business Logic | In-Progress | Feb 2026 |
-| IPFS & Multi-Channel Vision | Backlog | Q1 2026 |
+| Platform Orchestration | In-Progress | Feb 2026 |
+| IPFS & Storage | Backlog | Q1 2026 |
 | Enterprise Governance | Backlog | Q2 2026 |
 | Production K8s Migration | Backlog | Q3 2026 |
