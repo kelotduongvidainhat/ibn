@@ -12,6 +12,7 @@ NC='\033[0m'
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPTS_DIR="${PROJECT_ROOT}/network/scripts"
+export COMPOSE_PROJECT_NAME=fabric
 
 echo -e "${BOLD}${CYAN}💥 STARTING TOTAL NETWORK RESET (MONOTONIC GOVERNANCE)${NC}"
 echo "--------------------------------------------------------------------------------"
@@ -34,21 +35,11 @@ with open(path, 'w') as f:
     yaml.dump(d, f, default_flow_style=False, sort_keys=False)
 EOF
 
-# Reset docker-compose.yaml to Base
-python3 <<EOF
-import yaml
-path = '${PROJECT_ROOT}/network/docker-compose.yaml'
-with open(path, 'r') as f:
-    d = yaml.safe_load(f)
-# Whitelist of core services
-core = ['ca_orderer', 'ca_org1', 'orderer.example.com', 'peer0.org1.example.com', 'couchdb0', 'cli', 'chaincode-basic', 'backend']
-d['services'] = {k: v for k, v in d['services'].items() if k in core}
-# Whitelist core volumes
-core_vols = ['orderer.example.com', 'peer0.org1.example.com']
-d['volumes'] = {k: v for k, v in d['volumes'].items() if k in core_vols}
-with open(path, 'w') as f:
-    yaml.dump(d, f, default_flow_style=False, sort_keys=False)
-EOF
+# Reset modular compose directory for organizations
+echo "🗑️ Wiping modular organization configs..."
+rm -f "${PROJECT_ROOT}/network/compose"/docker-compose-org[2-9]*.yaml
+# Ensure org1 file exists (it should be static, but we can restore it if missing)
+# Actually, we keep org1.yaml as the anchor.
 
 # 1. Primary Bootstrap (Org1 + Orderer)
 echo -e "\n${BOLD}Step 1: Initial Bootstrap (Org1 + Orderer)${NC}"
@@ -71,7 +62,7 @@ done
 
 # 4. Starting Application Services
 echo -e "\n${BOLD}Step 4: Launching CaaS and Backend API${NC}"
-docker compose -f network/docker-compose.yaml up -d chaincode-basic backend
+docker compose -f network/compose/docker-compose-base.yaml -f network/compose/docker-compose-org1.yaml up -d chaincode-basic backend
 
 # 5. Final Synchronization Check
 echo -e "\n${BOLD}Step 5: Verifying Network Health${NC}"

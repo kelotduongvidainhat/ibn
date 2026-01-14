@@ -17,6 +17,7 @@ ORG_NAME="org${ORG_NUM}"
 DOMAIN="${ORG_NAME}.example.com"
 MSP_ID="Org${ORG_NUM}MSP"
 NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export COMPOSE_PROJECT_NAME=fabric
 BIN_DIR="${NETWORK_DIR}/../bin"
 SCRIPTS_DIR="${NETWORK_DIR}/scripts"
 ARTIFACTS_DIR="${NETWORK_DIR}/channel-artifacts"
@@ -122,23 +123,33 @@ if os.path.exists(config_path):
         with open(config_path, 'w') as f:
             yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 
-# 3.2 Clean docker-compose.yaml
-compose_path = '${NETWORK_DIR}/docker-compose.yaml'
-if os.path.exists(compose_path):
-    with open(compose_path, 'r') as f:
-        data = yaml.safe_load(f)
+# 3.2 Clean Modular Docker Config
+    compose_module = '${NETWORK_DIR}/compose/docker-compose-org${ORG_NUM}.yaml'
+    if os.path.exists(compose_module):
+        print(f"🐳 Removing modular infrastructure for Org{ORG_NUM}")
+        # We handle the 'docker down' outside python for simplicity
+        pass 
     
-    ca_svc = 'ca_${ORG_NAME}'
-    if ca_svc in data.get('services', {}):
-        del data['services'][ca_svc]
-    
-    peer_vol = 'peer0.${DOMAIN}'
-    if peer_vol in data.get('volumes', {}):
-        del data['volumes'][peer_vol]
-        
-    with open(compose_path, 'w') as f:
-        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+    # 3.3 Legacy docker-compose.yaml cleanup (optional, for safety)
+    compose_path = '${NETWORK_DIR}/docker-compose.yaml'
+    if os.path.exists(compose_path):
+        with open(compose_path, 'r') as f:
+            data = yaml.safe_load(f)
+        ca_svc = 'ca_${ORG_NAME}'
+        if ca_svc in data.get('services', {}): del data['services'][ca_svc]
+        peer_vol = 'peer0.${DOMAIN}'
+        if peer_vol in data.get('volumes', {}): del data['volumes'][peer_vol]
+        with open(compose_path, 'w') as f:
+            yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 EOF
+
+# Stop and remove modular services if file exists
+COMPOSE_MODULE="${NETWORK_DIR}/compose/docker-compose-org${ORG_NUM}.yaml"
+if [ -f "$COMPOSE_MODULE" ]; then
+    echo "🐳 Stopping and wiping ${ORG_NAME} containers and volumes..."
+    docker compose -f "$COMPOSE_MODULE" down --volumes --remove-orphans || true
+    rm "$COMPOSE_MODULE"
+fi
 
 # 4. Filesystem Cleanup
 echo "📂 Step 4: Deleting cryptographic material..."

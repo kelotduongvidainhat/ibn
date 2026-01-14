@@ -6,6 +6,7 @@ set -e
 
 CHANNEL_NAME=${1:-mychannel}
 NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export COMPOSE_PROJECT_NAME=fabric
 DOCS_LOG_DIR="${NETWORK_DIR}/../docs/logs"
 mkdir -p "${DOCS_LOG_DIR}"
 
@@ -83,50 +84,101 @@ with open(config_path, 'w') as f:
     yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 EOF
 
-# 2. Update docker-compose.yaml (CA and Volumes)
-echo "🐳 Patching docker-compose.yaml..."
-python3 <<EOF
-import yaml
-compose_path = '${NETWORK_DIR}/docker-compose.yaml'
-with open(compose_path, 'r') as f:
-    data = yaml.safe_load(f)
+# 2. Update Modular Docker Config
+echo "🐳 Generating modular docker-compose-org${ORG_NUM}.yaml..."
 
-org_num = int('${ORG_NUM}')
-org_name = '${ORG_NAME}'
-domain = '${DOMAIN}'
-msp_id = '${MSP_ID}'
+# Port Calculation Logic
+CA_PORT=$((7054 + (ORG_NUM-1)*1000))
+if [ $CA_PORT -eq 9054 ]; then CA_PORT=10054; elif [ $CA_PORT -ge 10054 ]; then CA_PORT=$((CA_PORT+1000)); fi
+CA_OPS_PORT=$((10000 + CA_PORT))
 
-# CA Port calculation (org1=7054, org2=8054, ...)
-ca_port = 7054 + (org_num-1)*1000
-if ca_port == 9054: ca_port = 10054 
-elif ca_port >= 10054: ca_port += 1000
+PEER_PORT=$((7051 + (ORG_NUM-1)*1000))
+PEER_OPS_PORT=$((9443 + (ORG_NUM-1)*1000))
+COUCH_PORT=$((5984 + (ORG_NUM-1)*1000))
 
-ca_name = f'ca_{org_name}'
-ca_svc = {
-    'image': 'hyperledger/fabric-ca:1.5.15',
-    'container_name': ca_name,
-    'environment': [
-        f'FABRIC_CA_SERVER_CA_NAME=ca-{org_name}',
-        'FABRIC_CA_SERVER_TLS_ENABLED=true',
-        'FABRIC_CA_SERVER_PORT=7054',
-        f'FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:{10000+ca_port}',
-        'FABRIC_CA_SERVER_CA_BOOTSTRAP_ENTRIES=admin:adminpw'
-    ],
-    'ports': [f'{ca_port}:7054', f'{10000+ca_port}:17054'],
-    'volumes': [f'./organizations/fabric-ca/{org_name}:/etc/hyperledger/fabric-ca-server'],
-    'networks': ['test']
-}
-data['services'][ca_name] = ca_svc
-peer_name = f'peer0.{domain}'
-data['volumes'][peer_name] = None
+cat > "${NETWORK_DIR}/compose/docker-compose-org${ORG_NUM}.yaml" <<EOF
+version: '3.7'
+networks:
+  test:
+    name: fabric_test
+services:
+  ca_${ORG_NAME}:
+    image: hyperledger/fabric-ca:1.5.15
+    container_name: ca_${ORG_NAME}
+    environment:
+    - FABRIC_CA_SERVER_CA_NAME=ca-${ORG_NAME}
+    - FABRIC_CA_SERVER_TLS_ENABLED=true
+    - FABRIC_CA_SERVER_PORT=7054
+    - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:17054
+    - FABRIC_CA_SERVER_CA_BOOTSTRAP_ENTRIES=admin:adminpw
+    ports:
+    - ${CA_PORT}:7054
+    - ${CA_OPS_PORT}:17054
+    volumes:
+    - ../organizations/fabric-ca/${ORG_NAME}:/etc/hyperledger/fabric-ca-server
+    networks:
+    - test
 
-with open(compose_path, 'w') as f:
-    yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+  couchdb.peer0.${DOMAIN}:
+    container_name: couchdb.peer0.${DOMAIN}
+    image: couchdb:3.3.2
+    environment:
+    - COUCHDB_USER=admin
+    - COUCHDB_PASSWORD=adminpw
+    ports:
+    - ${COUCH_PORT}:5984
+    networks:
+    - test
+
+  peer0.${DOMAIN}:
+    container_name: peer0.${DOMAIN}
+    image: hyperledger/fabric-peer:2.5.14
+    environment:
+    - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+    - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test
+    - FABRIC_LOGGING_SPEC=INFO
+    - CORE_PEER_TLS_ENABLED=true
+    - CORE_PEER_PROFILE_ENABLED=true
+    - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+    - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+    - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+    - CORE_PEER_ID=peer0.${DOMAIN}
+    - CORE_PEER_ADDRESS=peer0.${DOMAIN}:7051
+    - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+    - CORE_PEER_CHAINCODEADDRESS=peer0.${DOMAIN}:7052
+    - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+    - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051
+    - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.${DOMAIN}:7051
+    - CORE_PEER_LOCALMSPID=${MSP_ID}
+    - CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:9443
+    - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+    - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.peer0.${DOMAIN}:5984
+    - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+    - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+    - CORE_PEER_CHAINCODE_EXTERNALBUILDERS=[{"name":"ccaas-builder","path":"/opt/hyperledger/builders/ccaas"}]
+    volumes:
+    - /var/run/docker.sock:/host/var/run/docker.sock
+    - ../organizations/peerOrganizations/${DOMAIN}/peers/peer0.${DOMAIN}/msp:/etc/hyperledger/fabric/msp
+    - ../organizations/peerOrganizations/${DOMAIN}/peers/peer0.${DOMAIN}/tls:/etc/hyperledger/fabric/tls
+    - ../../builders/ccaas:/opt/hyperledger/builders/ccaas
+    - peer0.${DOMAIN}:/var/hyperledger/production
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: peer node start
+    ports:
+    - ${PEER_PORT}:7051
+    - ${PEER_OPS_PORT}:9443
+    depends_on:
+    - couchdb.peer0.${DOMAIN}
+    networks:
+    - test
+
+volumes:
+  peer0.${DOMAIN}:
 EOF
 
 # 3. Start CA and Bootstrap Identities
 echo "🏗️ Starting CA for ${ORG_NAME}..."
-docker-compose -f "${NETWORK_DIR}/docker-compose.yaml" up -d "ca_${ORG_NAME}"
+docker compose -f "${NETWORK_DIR}/compose/docker-compose-org${ORG_NUM}.yaml" up -d "ca_${ORG_NAME}"
 sleep 3
 sudo chown -R $(id -u):$(id -g) "${NETWORK_DIR}/organizations"
 

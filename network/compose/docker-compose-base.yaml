@@ -1,0 +1,131 @@
+version: '3.7'
+
+networks:
+  test:
+    name: fabric_test
+
+services:
+  ca_orderer:
+    image: hyperledger/fabric-ca:1.5.15
+    container_name: ca_orderer
+    environment:
+    - FABRIC_CA_SERVER_CA_NAME=ca-orderer
+    - FABRIC_CA_SERVER_TLS_ENABLED=true
+    - FABRIC_CA_SERVER_PORT=9054
+    - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:19054
+    - FABRIC_CA_SERVER_CA_BOOTSTRAP_ENTRIES=admin:adminpw
+    ports:
+    - 9054:9054
+    - 19054:19054
+    volumes:
+    - ../organizations/fabric-ca/orderer:/etc/hyperledger/fabric-ca-server
+    networks:
+    - test
+
+  orderer.example.com:
+    container_name: orderer.example.com
+    image: hyperledger/fabric-orderer:2.5.14
+    environment:
+    - FABRIC_LOGGING_SPEC=INFO
+    - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+    - ORDERER_GENERAL_LISTENPORT=7050
+    - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+    - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+    - ORDERER_GENERAL_TLS_ENABLED=true
+    - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+    - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+    - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+    - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+    - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+    - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+    - ORDERER_GENERAL_BOOTSTRAPMETHOD=none
+    - ORDERER_CHANNELPARTICIPATION_ENABLED=true
+    - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7053
+    - ORDERER_ADMIN_TLS_ENABLED=true
+    - ORDERER_ADMIN_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+    - ORDERER_ADMIN_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+    - ORDERER_ADMIN_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+    - ORDERER_ADMIN_TLS_CLIENTAUTHREQUIRED=true
+    - ORDERER_ADMIN_TLS_CLIENTROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric
+    command: orderer
+    volumes:
+    - ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp
+    - ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/:/var/hyperledger/orderer/tls
+    - orderer.example.com:/var/hyperledger/production/orderer
+    ports:
+    - 7050:7050
+    - 7053:7053
+    networks:
+    - test
+
+  cli:
+    container_name: cli
+    image: hyperledger/fabric-tools:2.5.14
+    tty: true
+    stdin_open: true
+    environment:
+    - GOPATH=/opt/gopath
+    - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+    - FABRIC_LOGGING_SPEC=INFO
+    - CORE_PEER_ID=cli
+    - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+    - CORE_PEER_LOCALMSPID=Org1MSP
+    - CORE_PEER_TLS_ENABLED=true
+    - CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.crt
+    - CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.key
+    - CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+    - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: /bin/bash
+    volumes:
+    - /var/run/docker.sock:/host/var/run/docker.sock
+    - ../organizations:/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations
+    - ../scripts:/opt/gopath/src/github.com/hyperledger/fabric/peer/scripts
+    - ../channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts
+    - ../packaging:/opt/gopath/src/github.com/hyperledger/fabric/peer/packaging
+    networks:
+    - test
+
+  chaincode-basic:
+    container_name: chaincode-basic
+    build:
+      context: ../../chaincode
+      dockerfile: Dockerfile
+    image: basic-cc-image
+    environment:
+    - CHAINCODE_SERVER_ADDRESS=0.0.0.0:9999
+    - CHAINCODE_ID=basic_1.0:placeholder
+    ports:
+    - 9999:9999
+    networks:
+    - test
+
+  backend:
+    container_name: backend
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    environment:
+    - PORT=8080
+    - MSP_ID=Org1MSP
+    - CHANNEL_NAME=mychannel
+    - CHAINCODE_NAME=basic
+    - PEER_ENDPOINT=peer0.org1.example.com:7051
+    - PEER_HOST_OVERRIDE=peer0.org1.example.com
+    - CERT_PATH=/network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/signcerts/Admin@org1.example.com-cert.pem
+    - KEY_PATH=/network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore/priv_sk
+    - TLS_CERT_PATH=/network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+    ports:
+    - 8080:8080
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    - ../organizations:/network/organizations
+    - ../scripts:/network/scripts
+    - ../channel-artifacts:/network/channel-artifacts
+    - ../packaging:/network/packaging
+    networks:
+    - test
+
+volumes:
+  orderer.example.com:

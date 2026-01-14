@@ -4,12 +4,13 @@ set -e
 
 NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCRIPTS_DIR="${NETWORK_DIR}/scripts"
+export COMPOSE_PROJECT_NAME=fabric
 
 echo "==== STARTING FABRIC CA BOOTSTRAP ===="
 
 # 1. Full Cleanup
 echo "--- Stopping and cleaning network ---"
-docker-compose -f "${NETWORK_DIR}/docker-compose.yaml" down --volumes --remove-orphans || true
+docker compose -f "${NETWORK_DIR}/compose/docker-compose-base.yaml" -f "${NETWORK_DIR}/compose/docker-compose-org1.yaml" down --volumes --remove-orphans || true
 docker run --rm -v "${NETWORK_DIR}:/network" alpine sh -c "rm -rf /network/organizations/* /network/channel-artifacts/*"
 
 # Ensure directories exist and are owned by current user
@@ -20,7 +21,7 @@ sudo chown -R $(id -u):$(id -g) "${NETWORK_DIR}/channel-artifacts"
 
 # 2. Start CAs
 echo "--- Launching CA containers ---"
-docker-compose -f "${NETWORK_DIR}/docker-compose.yaml" up -d ca_org1 ca_orderer
+docker compose -f "${NETWORK_DIR}/compose/docker-compose-base.yaml" -f "${NETWORK_DIR}/compose/docker-compose-org1.yaml" up -d ca_org1 ca_orderer
 
 # 3. Wait for CAs to be healthy
 echo "--- Waiting for CAs to initialize ---"
@@ -51,7 +52,7 @@ export FABRIC_CFG_PATH="${NETWORK_DIR}"
 
 # 6. Start Rest of Network
 echo "--- Launching Orderer, Peer, and CLI ---"
-docker-compose -f "${NETWORK_DIR}/docker-compose.yaml" up -d orderer.example.com peer0.org1.example.com couchdb0 cli
+docker compose -f "${NETWORK_DIR}/compose/docker-compose-base.yaml" -f "${NETWORK_DIR}/compose/docker-compose-org1.yaml" up -d orderer.example.com peer0.org1.example.com couchdb0 cli
 
 # 7. Wait for nodes
 echo "--- Waiting for network nodes (10s) ---"
