@@ -15,7 +15,7 @@ This project implements a high-performance, production-grade Hyperledger Fabric 
 - [x] **Phase 6: Fabric CA Integration** (Mutual TLS, Authority-based Enrollment)
 - [x] **Phase 5: Advanced Logic** (History, Transfers, Automated Scaling)
 - [x] **Phase 6: Rich Queries & CouchDB** (CouchDB Migration, Selector Queries)
-- [🚧] **Phase 7: Asset Marketplace** (Soft Deletes, IPFS Integration)
+- [x] **Phase 7: Asset Marketplace** (Soft Deletes, IPFS Integration)
 
 ## 🏗️ Project Structure
 
@@ -119,6 +119,7 @@ The network management toolkit is exposed via REST API for remote integration:
 ---
 
 ## 🏗 Features Enabled
+- **Global TLS CA Architecture**: Implements a dedicated TLS Certificate Authority (`ca_tls` on port 5054) acting as the single root of trust for transport security. This enables **Zero-Touch Scaling**, allowing new organizations to instantly communicate with existing peers without manual certificate swapping.
 - **Fabric CA Integration**: Dynamic identity management with dedicated CAs for Org1 and Orderer.
 - **Node OUs**: Automated role identification (Admin vs Peer vs Client).
 - **CouchDB State Database**: Supports complex JSON queries and indexing.
@@ -126,6 +127,7 @@ The network management toolkit is exposed via REST API for remote integration:
 - **CaaS Workflow**: Chaincode runs as an external service for instant development cycles.
 - **Mutual TLS**: Enforced across all boundaries with host-validated certificates.
 - **Modern Channeling**: Uses `osnadmin` and Application Channel Participation.
+- **Modular Infrastructure**: Horizontal splitting by organization (Found in `network/compose/`) for independent scaling.
 
 ---
 

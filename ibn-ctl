@@ -5,6 +5,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPTS_DIR="${PROJECT_ROOT}/network/scripts"
 COMPOSE_DIR="${PROJECT_ROOT}/network/compose"
 export COMPOSE_PROJECT_NAME=fabric
+export COMPOSE_IGNORE_ORPHANS=True
 
 # Discover all modular compose files
 COMPOSE_FILES="-f ${COMPOSE_DIR}/docker-compose-base.yaml"

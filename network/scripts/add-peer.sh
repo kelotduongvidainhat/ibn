@@ -16,6 +16,8 @@ fi
 NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN_DIR="${NETWORK_DIR}/../bin"
 export PATH="${BIN_DIR}:${PATH}"
+export COMPOSE_PROJECT_NAME=fabric
+export COMPOSE_IGNORE_ORPHANS=True
 
 # --- DYNAMIC CONFIGURATION ---
 ORG_NUM=$(echo $ORG_NAME | grep -o '[0-9]\+')
@@ -33,24 +35,34 @@ if [ $CA_PORT -eq 9054 ]; then CA_PORT=10054; elif [ $CA_PORT -ge 10054 ]; then 
 export FABRIC_CA_CLIENT_HOME="${NETWORK_DIR}/organizations/fabric-ca/${ORG_NAME}"
 ORG_ROOT_CERT="${FABRIC_CA_CLIENT_HOME}/ca-cert.pem"
 
+# TLS CA Configuration
+TLS_CA_HOME="${NETWORK_DIR}/organizations/fabric-ca/tls"
+TLS_ROOT_CERT="${TLS_CA_HOME}/ca-cert.pem"
+
 echo "🚀 [INFRA] Enrolling identities for ${PEER_NAME}..."
 
 # 1. Register/Enroll MSP & TLS
 set +e
+# MSP Identity
 fabric-ca-client register --caname "ca-${ORG_NAME}" --id.name "${PEER_ID}" --id.secret "${PEER_ID}pw" --id.type peer --tls.certfiles "${ORG_ROOT_CERT}" 2>/dev/null
+# TLS Identity (Global)
+FABRIC_CA_CLIENT_HOME="${TLS_CA_HOME}" fabric-ca-client register --caname ca-tls --id.name "${ORG_NAME}-${PEER_ID}" --id.secret "${PEER_ID}pw" --id.type peer --tls.certfiles "${TLS_ROOT_CERT}" 2>/dev/null
 set -e
 
 PEER_BASE_DIR="${NETWORK_DIR}/organizations/peerOrganizations/${DOMAIN}/peers/${PEER_NAME}"
 mkdir -p "${PEER_BASE_DIR}/msp" "${PEER_BASE_DIR}/tls"
 
+# Enroll MSP (Identity CA)
 fabric-ca-client enroll -u "https://${PEER_ID}:${PEER_ID}pw@localhost:${CA_PORT}" --caname "ca-${ORG_NAME}" -M "${PEER_BASE_DIR}/msp" --tls.certfiles "${ORG_ROOT_CERT}"
 cp "$(ls ${PEER_BASE_DIR}/msp/cacerts/*.pem | head -n 1)" "${PEER_BASE_DIR}/msp/cacerts/ca.crt"
 cp "${NETWORK_DIR}/organizations/peerOrganizations/${DOMAIN}/msp/config.yaml" "${PEER_BASE_DIR}/msp/config.yaml"
 
-fabric-ca-client enroll -u "https://${PEER_ID}:${PEER_ID}pw@localhost:${CA_PORT}" --caname "ca-${ORG_NAME}" --enrollment.profile tls --csr.hosts "${PEER_NAME},localhost" -M "${PEER_BASE_DIR}/tls" --tls.certfiles "${ORG_ROOT_CERT}"
+# Enroll TLS (Global TLS CA)
+FABRIC_CA_CLIENT_HOME="${TLS_CA_HOME}" fabric-ca-client enroll -u "https://${ORG_NAME}-${PEER_ID}:${PEER_ID}pw@localhost:5054" --caname ca-tls --enrollment.profile tls --csr.hosts "${PEER_NAME},localhost" -M "${PEER_BASE_DIR}/tls" --tls.certfiles "${TLS_ROOT_CERT}"
 cp "${PEER_BASE_DIR}/tls/keystore/"* "${PEER_BASE_DIR}/tls/server.key"
 cp "${PEER_BASE_DIR}/tls/signcerts/"* "${PEER_BASE_DIR}/tls/server.crt"
-cp "${ORG_ROOT_CERT}" "${PEER_BASE_DIR}/tls/ca.crt"
+# CRITICAL: Peer must trust Global TLS Root
+cp "${TLS_ROOT_CERT}" "${PEER_BASE_DIR}/tls/ca.crt"
 
 # 2. Start Services
 echo "🏗️  Starting ${PEER_NAME} and its CouchDB via modular compose..."

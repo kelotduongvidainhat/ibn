@@ -5,13 +5,13 @@ set -e
 NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCRIPTS_DIR="${NETWORK_DIR}/scripts"
 export COMPOSE_PROJECT_NAME=fabric
+export COMPOSE_IGNORE_ORPHANS=True
 
 echo "==== STARTING FABRIC CA BOOTSTRAP ===="
 
 # 1. Full Cleanup
 echo "--- Stopping and cleaning network ---"
-docker compose -f "${NETWORK_DIR}/compose/docker-compose-base.yaml" -f "${NETWORK_DIR}/compose/docker-compose-org1.yaml" down --volumes --remove-orphans || true
-docker run --rm -v "${NETWORK_DIR}:/network" alpine sh -c "rm -rf /network/organizations/* /network/channel-artifacts/*"
+"${SCRIPTS_DIR}/network-down.sh"
 
 # Ensure directories exist and are owned by current user
 mkdir -p "${NETWORK_DIR}/organizations"
@@ -20,14 +20,15 @@ sudo chown -R $(id -u):$(id -g) "${NETWORK_DIR}/organizations"
 sudo chown -R $(id -u):$(id -g) "${NETWORK_DIR}/channel-artifacts"
 
 # 2. Start CAs
-echo "--- Launching CA containers ---"
-docker compose -f "${NETWORK_DIR}/compose/docker-compose-base.yaml" -f "${NETWORK_DIR}/compose/docker-compose-org1.yaml" up -d ca_org1 ca_orderer
+echo "--- Launching CA containers (including Global TLS CA) ---"
+docker compose -f "${NETWORK_DIR}/compose/docker-compose-base.yaml" -f "${NETWORK_DIR}/compose/docker-compose-org1.yaml" up -d ca_tls ca_org1 ca_orderer
 
 # 3. Wait for CAs to be healthy
 echo "--- Waiting for CAs to initialize ---"
 max_retries=15
 counter=0
-while [ ! -f "${NETWORK_DIR}/organizations/fabric-ca/org1/tls-cert.pem" ]; do
+while [ ! -f "${NETWORK_DIR}/organizations/fabric-ca/org1/tls-cert.pem" ] || \
+      [ ! -f "${NETWORK_DIR}/organizations/fabric-ca/tls/tls-cert.pem" ]; do
     if [ $counter -eq $max_retries ]; then
         echo "CAs failed to start"
         exit 1

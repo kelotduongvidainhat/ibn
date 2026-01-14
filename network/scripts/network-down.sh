@@ -1,23 +1,37 @@
 #!/bin/bash
 # network/scripts/network-down.sh
 # Comprehensive cleanup script to safely stop the network and wipe all data.
+# Refactored for Modular Infrastructure.
 
 set -e
 
 NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMPOSE_FILE="${NETWORK_DIR}/docker-compose.yaml"
+COMPOSE_DIR="${NETWORK_DIR}/compose"
+
+# --- CONFIGURATION ---
+export COMPOSE_PROJECT_NAME=fabric
+export COMPOSE_IGNORE_ORPHANS=True
 
 echo "🛑 [STOP] Bringing down the Fabric network..."
 
-# 1. STOP & REMOVE CONTAINERS
-# --volumes: Removes all volumes defined in the yaml
-# --remove-orphans: Removes containers for services not defined in the yaml (useful if yaml was edited)
-if [ -f "$COMPOSE_FILE" ]; then
-    echo "🐳 Stopping containers and removing volumes..."
-    docker-compose -f "$COMPOSE_FILE" down --volumes --remove-orphans || true
-else
-    echo "⚠️ Warning: docker-compose.yaml not found at $COMPOSE_FILE"
+# 1. DISCOVERY & STOP
+# Find all modular compose files to ensure thorough cleanup
+COMPOSE_FILES="-f ${COMPOSE_DIR}/docker-compose-base.yaml"
+if [ -d "${COMPOSE_DIR}" ]; then
+    for f in "${COMPOSE_DIR}"/docker-compose-org*.yaml; do
+        if [ -f "$f" ]; then
+            COMPOSE_FILES="${COMPOSE_FILES} -f $f"
+        fi
+    done
 fi
+
+# Fallback for legacy monolithic file if it exists
+if [ -f "${NETWORK_DIR}/docker-compose.yaml" ]; then
+    COMPOSE_FILES="${COMPOSE_FILES} -f ${NETWORK_DIR}/docker-compose.yaml"
+fi
+
+echo "🐳 Stopping containers and removing volumes..."
+docker compose ${COMPOSE_FILES} down --volumes --remove-orphans || true
 
 # 2. CLEANUP PHYSICAL ARTIFACTS
 # We use a Docker helper to bypass permission issues with root-owned cert folders
@@ -28,11 +42,14 @@ docker run --rm -v "${NETWORK_DIR}:/network" alpine sh -c "rm -rf /network/organ
 rm -f "${NETWORK_DIR}/packaging/package_id.txt"
 rm -f "${NETWORK_DIR}/scripts/log.txt"
 
-# 4. PRUNE MISC
-# Ensure no orphaned volumes or networks remain
+# 4. DEEP PRUNE
+# This is the "Magic Bullet" that removes ghost volumes from previous sessions
 echo "🧹 Final pruning of unused resources..."
 docker network prune -f
 docker volume prune -f
+# Aggressive cleanup of project volumes
+echo "🧹 Removing any remaining project volumes..."
+docker volume ls -q | grep "^${COMPOSE_PROJECT_NAME}_" | xargs -r docker volume rm || true
+docker volume ls -q | grep "^ibn_" | xargs -r docker volume rm || true
 
 echo "✅ SUCCESS: Network is down and storage is clean."
-echo "Tip: To start over, run ./network/scripts/bootstrap-ca.sh"

@@ -7,6 +7,7 @@ set -e
 CHANNEL_NAME=${1:-mychannel}
 NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export COMPOSE_PROJECT_NAME=fabric
+export COMPOSE_IGNORE_ORPHANS=True
 DOCS_LOG_DIR="${NETWORK_DIR}/../docs/logs"
 mkdir -p "${DOCS_LOG_DIR}"
 
@@ -97,7 +98,6 @@ PEER_OPS_PORT=$((9443 + (ORG_NUM-1)*1000))
 COUCH_PORT=$((5984 + (ORG_NUM-1)*1000))
 
 cat > "${NETWORK_DIR}/compose/docker-compose-org${ORG_NUM}.yaml" <<EOF
-version: '3.7'
 networks:
   test:
     name: fabric_test
@@ -147,7 +147,7 @@ services:
     - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
     - CORE_PEER_CHAINCODEADDRESS=peer0.${DOMAIN}:7052
     - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
-    - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051
+    - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.${DOMAIN}:7051
     - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.${DOMAIN}:7051
     - CORE_PEER_LOCALMSPID=${MSP_ID}
     - CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:9443
@@ -187,6 +187,10 @@ ORG_ROOT_CERT="${FABRIC_CA_CLIENT_HOME}/ca-cert.pem"
 CA_PORT=$((7054 + (ORG_NUM-1)*1000))
 if [ $CA_PORT -eq 9054 ]; then CA_PORT=10054; elif [ $CA_PORT -ge 10054 ]; then CA_PORT=$((CA_PORT+1000)); fi
 
+# TLS CA Configuration
+TLS_CA_HOME="${NETWORK_DIR}/organizations/fabric-ca/tls"
+TLS_ROOT_CERT="${TLS_CA_HOME}/ca-cert.pem"
+
 echo "🔑 Enrolling identities..."
 # Enroll bootstrap admin
 fabric-ca-client enroll -u https://admin:adminpw@localhost:${CA_PORT} --caname "ca-${ORG_NAME}" --tls.certfiles "${ORG_ROOT_CERT}"
@@ -195,13 +199,18 @@ fabric-ca-client enroll -u https://admin:adminpw@localhost:${CA_PORT} --caname "
 set +e
 fabric-ca-client register --caname "ca-${ORG_NAME}" --id.name peer0 --id.secret peer0pw --id.type peer --tls.certfiles "${ORG_ROOT_CERT}"
 fabric-ca-client register --caname "ca-${ORG_NAME}" --id.name "orgadmin" --id.secret adminpw --id.type admin --tls.certfiles "${ORG_ROOT_CERT}"
+
+# Register TLS Identity (Global TLS CA)
+echo "--- Registering ${ORG_NAME} TLS Identities ---"
+FABRIC_CA_CLIENT_HOME="${TLS_CA_HOME}" fabric-ca-client register --caname ca-tls --id.name "${ORG_NAME}-peer0" --id.secret peer0pw --id.type peer --tls.certfiles "${TLS_ROOT_CERT}" 2>/dev/null
 set -e
 
 # MSP Folder for Org
 ORG_MSP="${NETWORK_DIR}/organizations/peerOrganizations/${DOMAIN}/msp"
 mkdir -p "${ORG_MSP}/cacerts" "${ORG_MSP}/tlscacerts"
 cp "${ORG_ROOT_CERT}" "${ORG_MSP}/cacerts/ca.crt"
-cp "${ORG_ROOT_CERT}" "${ORG_MSP}/tlscacerts/ca.crt"
+# TLS Root is Global CA
+cp "${TLS_ROOT_CERT}" "${ORG_MSP}/tlscacerts/ca.crt"
 
 # Admin MSP
 ADMIN_DIR="${NETWORK_DIR}/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp"
@@ -290,6 +299,37 @@ fi
 # 5. Bring Peer Online and Join
 echo "🏢 Starting Peer..."
 "${SCRIPTS_DIR}/add-peer.sh" peer0 "${ORG_NAME}" "${CHANNEL_NAME}"
+
+# 6. Synchronization Check
+# The peer will join with Block 0 and initially fail Gossip (not in channel).
+# It MUST sync with Orderer to get the latest config block where it exists.
+echo "⏳ Verifying peer synchronization (Waiting for Ledger Height to catch up)..."
+MAX_RETRIES=20
+RETRY_COUNT=0
+SYNCED=false
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    sleep 2
+    # Get current height
+    HEIGHT=$(docker exec \
+      -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
+      -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp" \
+      -e CORE_PEER_TLS_ROOTCERT_FILE="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/peers/peer0.${DOMAIN}/tls/ca.crt" \
+      cli peer channel getinfo -c "${CHANNEL_NAME}" 2>&1 | grep -o 'Height: [0-9]*' | awk '{print $2}')
+    
+    if [ ! -z "$HEIGHT" ] && [ "$HEIGHT" -gt 1 ]; then
+        echo "✅ Peer synced! Current Ledger Height: $HEIGHT"
+        SYNCED=true
+        break
+    fi
+    echo "   ... Current Height: ${HEIGHT:-0} (Waiting for sync...)"
+    RETRY_COUNT=$((RETRY_COUNT+1))
+done
+
+if [ "$SYNCED" = false ]; then
+    echo "⚠️  WARNING: Peer joined but hasn't synced ledger yet. It might be stuck."
+    # We don't exit here, as it might just be slow, but we warn the user.
+fi
 
 # 6. Chaincode Lifecycle
 echo "📦 Finalizing Chaincode Lifecycle for ${ORG_NAME}..."

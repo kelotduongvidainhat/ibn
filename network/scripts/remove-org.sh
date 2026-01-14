@@ -18,6 +18,7 @@ DOMAIN="${ORG_NAME}.example.com"
 MSP_ID="Org${ORG_NUM}MSP"
 NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export COMPOSE_PROJECT_NAME=fabric
+export COMPOSE_IGNORE_ORPHANS=True
 BIN_DIR="${NETWORK_DIR}/../bin"
 SCRIPTS_DIR="${NETWORK_DIR}/scripts"
 ARTIFACTS_DIR="${NETWORK_DIR}/channel-artifacts"
