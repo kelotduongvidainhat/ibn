@@ -86,6 +86,10 @@ This document logs the manual steps taken to add a new organization (Org2) to th
         - `assetX3` (3/6 signatures): **REJECTED**. Transaction submitted but asset not created in World State.
         - `assetX4` (4/6 signatures): **ACCEPTED**. Asset successfully stored and queried.
     - **Validation Proof**: Confirmed that transactions with insufficient signatures (3/6) are rejected by the peers' validation phase even if they pass the ordering phase.
+## [2026-01-14] Governance & Lifecycle Automation
+- **Implemented `freeze-org.sh`**: Developed a "soft-lock" governance tool that restricts an organization's access by updating channel policies to an unsatisfiable state.
+- **Implemented Mandatory Two-Step Removal**: Enhanced `remove-org.sh` with a safety airlock. The script now enforces that an organization must be "Frozen" before it can be "Excised."
+- **Infrastructure Purge**: `remove-org.sh` now automates the cleanup of Docker containers, volumes, `configtx.yaml` entries, and physical cryptographic material.
 
 ---
 ## Phase 7: The Superadmin Suite

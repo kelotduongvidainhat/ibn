@@ -4,25 +4,50 @@
 
 set -e
 
-ORG_NUM=$1
-CHANNEL_NAME=${2:-mychannel}
+CHANNEL_NAME=${1:-mychannel}
+NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DOCS_LOG_DIR="${NETWORK_DIR}/../docs/logs"
+mkdir -p "${DOCS_LOG_DIR}"
 
-if [ -z "$ORG_NUM" ]; then
-    echo "Usage: ./network/scripts/add-org.sh <org_num> [channel_name]"
-    echo "Example: ./network/scripts/add-org.sh 4 mychannel"
-    exit 1
+# 1. Setup Logging
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+LOG_FILE="${DOCS_LOG_DIR}/add-org_${TIMESTAMP}.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "--------------------------------------------------------------------------------"
+echo "🚀 [AUTOMATION] Execution started at: $(date)"
+echo "--------------------------------------------------------------------------------"
+
+# 2. Auto-Determine Next ORG_NUM
+HISTORY_FILE="${DOCS_LOG_DIR}/org_index.history"
+LAST_ID=0
+if [ -f "$HISTORY_FILE" ]; then
+    LAST_ID=$(tail -n 1 "$HISTORY_FILE" | grep -o "[0-9]\+")
 fi
+
+# Scan configtx.yaml for highest existing ID to prevent collisions
+MAX_CONFIG_ID=$(grep -o "Org[0-9]\+MSP" "${NETWORK_DIR}/configtx.yaml" | grep -o "[0-9]\+" | sort -nr | head -n 1 || echo 0)
+
+# Scan filesystem for legacy folders
+MAX_FS_ID=$(ls "${NETWORK_DIR}/organizations/peerOrganizations" 2>/dev/null | grep -o "[0-9]\+" | sort -nr | head -n 1 || echo 0)
+
+# The next ID is the max of all known sources + 1
+ORG_NUM=$(( (MAX_CONFIG_ID > LAST_ID ? MAX_CONFIG_ID : LAST_ID) ))
+ORG_NUM=$(( (MAX_FS_ID > ORG_NUM ? MAX_FS_ID : ORG_NUM) + 1 ))
 
 ORG_NAME="org${ORG_NUM}"
 DOMAIN="${ORG_NAME}.example.com"
 MSP_ID="Org${ORG_NUM}MSP"
-NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN_DIR="${NETWORK_DIR}/../bin"
 SCRIPTS_DIR="${NETWORK_DIR}/scripts"
 ARTIFACTS_DIR="${NETWORK_DIR}/channel-artifacts"
 export PATH="${BIN_DIR}:${PATH}"
 
-echo "🚀 [AUTOMATION] Starting process to add ${ORG_NAME} to the network..."
+echo "📍 Assigned New Organization ID: ${ORG_NUM} (${MSP_ID})"
+
+# 3. Persist ID reservation
+echo "${ORG_NUM}" >> "$HISTORY_FILE"
+echo "[$(date)] Reserving ${MSP_ID} for provisioning..." >> "${DOCS_LOG_DIR}/org_lifecycle.log"
 
 # 1. Update configtx.yaml (Future proofing)
 echo "📝 Patching configtx.yaml..."
@@ -71,8 +96,7 @@ org_name = '${ORG_NAME}'
 domain = '${DOMAIN}'
 msp_id = '${MSP_ID}'
 
-# CA Port calculation (logic: org1=7054, org2=8054, org3=10054, ...)
-# Avoid 9054 which is orderer
+# CA Port calculation (org1=7054, org2=8054, ...)
 ca_port = 7054 + (org_num-1)*1000
 if ca_port == 9054: ca_port = 10054 
 elif ca_port >= 10054: ca_port += 1000
@@ -93,8 +117,6 @@ ca_svc = {
     'networks': ['test']
 }
 data['services'][ca_name] = ca_svc
-
-# Note: Peer service will be added by add-peer.sh, but we need the volume here
 peer_name = f'peer0.{domain}'
 data['volumes'][peer_name] = None
 

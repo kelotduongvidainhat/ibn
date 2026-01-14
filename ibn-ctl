@@ -31,7 +31,9 @@ function usage() {
     echo "Commands:"
     echo "  health      Check ledger heights and synchronization"
     echo "  stats       Monitor CPU/RAM/Network resources"
-    echo "  scale       Add a new organization to the network"
+    echo "  scale       Add a new organization (Auto-ID allocation)"
+    echo "  freeze      Restrict an organization's ledger rights"
+    echo "  remove      Permanently excise an organization from channel"
     echo "  peer        Add a new peer and join channel (optional)"
     echo "  deploy      Lifecycle: Approve and Commit chaincode (Batch)"
     echo "  profiles    Generate Connection Profiles for all orgs"
@@ -52,19 +54,18 @@ function interactive_menu() {
         echo "4) 📦 Chaincode Lifecycle   Approve & Commit (Batch Mode)"
         echo "5) 📇 Generate Profiles     Create SDK Connection JSONs"
         echo "6) 👤 Onboard Client       Register new app user"
-        echo "7) 💥 Fresh Start          Reset and Rebuild 3-Org Network"
-        echo "8) 🛑 Network Shutdown     Stop and wipe all data"
-        echo "9) 🚪 Exit"
+        echo "7) ❄️  Freeze Org          Restrict an organization"
+        echo "8) 🗑️  Remove Org          Permanently excise an organization"
+        echo "9) 💥 Fresh Start          Reset and Rebuild Network"
+        echo "10) 🛑 Network Shutdown    Stop and wipe all data"
+        echo "11) 🚪 Exit"
         echo ""
         read -p "Select an option: " opt
 
         case $opt in
             1) "${SCRIPTS_DIR}/network-health.sh" ;;
             2) "${SCRIPTS_DIR}/network-resource-monitor.sh" ;;
-            3) 
-                read -p "Enter Org Number (e.g. 7): " orgnum
-                "${SCRIPTS_DIR}/add-org.sh" "$orgnum"
-                ;;
+            3) "${SCRIPTS_DIR}/add-org.sh" ;;
             4)
                 read -p "CC Name (basic): " ccname
                 ccname=${ccname:-basic}
@@ -81,16 +82,24 @@ function interactive_menu() {
                 "${SCRIPTS_DIR}/enroll-client.sh" "$cid" "$oname"
                 ;;
             7)
-                echo -e "${RED}${BOLD}🔥 CRITICAL: This will destroy your current network and rebuild it from scratch.${NC}"
+                read -p "Enter Org Num to Freeze: " fnum
+                "${SCRIPTS_DIR}/freeze-org.sh" "$fnum"
+                ;;
+            8)
+                read -p "Enter Org Num to Remove: " rnum
+                "${SCRIPTS_DIR}/remove-org.sh" "$rnum"
+                ;;
+            9)
+                echo -e "${RED}${BOLD}🔥 CRITICAL: Total network reset.${NC}"
                 read -p "Proceed with Fresh Start? (y/N): " confirm
                 if [[ $confirm == [yY] ]]; then "${PROJECT_ROOT}/fresh-start.sh"; fi
                 ;;
-            8) 
+            10) 
                 echo -e "${RED}${BOLD}WARNING: This will delete ALL ledger data.${NC}"
                 read -p "Are you sure? (y/N): " confirm
                 if [[ $confirm == [yY] ]]; then "${SCRIPTS_DIR}/network-down.sh"; fi
                 ;;
-            9|exit|quit) exit 0 ;;
+            11|exit|quit) exit 0 ;;
             *) echo -e "${RED}Invalid option${NC}" ;;
         esac
         echo -e "\n${YELLOW}Press Enter to return to menu...${NC}"
@@ -105,7 +114,9 @@ else
     case $1 in
         health)   "${SCRIPTS_DIR}/network-health.sh" ;;
         stats)    "${SCRIPTS_DIR}/network-resource-monitor.sh" ;;
-        scale)    "${SCRIPTS_DIR}/add-org.sh" "$2" ;;
+        scale)    "${SCRIPTS_DIR}/add-org.sh" ;;
+        freeze)   "${SCRIPTS_DIR}/freeze-org.sh" "$2" ;;
+        remove)   "${SCRIPTS_DIR}/remove-org.sh" "$2" ;;
         peer)     "${SCRIPTS_DIR}/add-peer.sh" "$2" "$3" "$4" ;;
         approve)  "${SCRIPTS_DIR}/mass-approve.sh" "$2" "$3" "$4" ;;
         commit)   "${SCRIPTS_DIR}/mass-commit.sh" "$2" "$3" "$4" ;;

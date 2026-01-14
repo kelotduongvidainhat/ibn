@@ -81,9 +81,14 @@ The network includes a suite of automation scripts for advanced operations and s
 *   **`deploy-caas.sh`**: Handles the full Fabric lifecycle (Install -> Approve -> Commit) for Chaincode-as-a-Service.
 
 ### 2. Network Scaling
-*   **`add-org.sh <num>`**:
-    *   **Automation**: The "Org Factory." Provisions a new CA, registers identities, and performs the multi-signature "Admin Dance" to admit a new organization to the channel.
-    *   **Example**: `./network/scripts/add-org.sh 4`
+*   **`add-org.sh`**:
+    *   **Automation**: The "Org Factory." Automatically determines the next unique monotonic ID, provisions a new CA, registers identities, and performs the multi-signature "Admin Dance."
+    *   **Logging**: Detailed logs are stored in `docs/logs/` and history is tracked in `docs/logs/org_index.history`.
+    *   **Example**: `./network/scripts/add-org.sh`
+*   **`freeze-org.sh <num>`**:
+    *   **Governance**: The "Consortium Lockout." Mandatory first step for removal. Restricts transaction submission while keeping history.
+*   **`remove-org.sh <num>`**:
+    *   **Governance**: The "Permanent Excise." Destructive operation. Requires organization to be frozen first. Wipes data, crypto material, and logs the excision to the immutable lifecycle log.
 *   **`add-peer.sh <name> <org>`**: 
     *   **Automation**: Registers node with CA, issues TLS certs, and dynamically injects a new peer service into `docker-compose.yaml` with smart port allocation.
 *   **`peer-join-channel.sh <name> <org> <channel>`**:
@@ -121,3 +126,11 @@ The network management toolkit is exposed via REST API for remote integration:
 - **CaaS Workflow**: Chaincode runs as an external service for instant development cycles.
 - **Mutual TLS**: Enforced across all boundaries with host-validated certificates.
 - **Modern Channeling**: Uses `osnadmin` and Application Channel Participation.
+
+---
+
+## 📂 Project Logs & Audit Trail
+Platform execution history is centrally managed in `docs/logs/`:
+- **`org_lifecycle.log`**: Unified audit trail for all governance events (Freeze, Remove, Add).
+- **`org_index.history`**: Monotonic index tracker for organization IDs.
+- **`add-org_*.log`**: Complete execution traces for every organization provisioning event.

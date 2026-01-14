@@ -36,6 +36,14 @@ To scale to multiple applications (Tea-Tracking, Ownership, etc.), the following
 *   **Platform Role**: Ensures the "Engine" is running smoothly, regardless of what the "Cargo" (Data) is.
 *   **Strategic Goal**: Real-time alerts if a node lags behind, preventing platform-wide degradation.
 
+### 6. Robust Lifecycle Governance
+*   **The Component**: `add-org.sh`, `freeze-org.sh`, `remove-org.sh`.
+*   **Decoupling**: Manage network membership without touching application code.
+*   **Platform Role**: Provides a "Security Air-Lock" for membership changes.
+*   **Strategic Goal**: Prevent identity collisions and maintain an immutable record of consortium changes.
+    - **Monotonic ID Policy**: IDs are treated as permanent serial numbers. Once an Org ID is retired, it is never reused.
+    - **Two-Step Removal Protocol**: Mandates a "Freeze" (soft-lock) before a "Remove" (hard-delete) to ensure data safety.
+
 ---
 
 ## 🗺️ Conceptual Layers
@@ -65,6 +73,14 @@ To scale to multiple applications (Tea-Tracking, Ownership, etc.), the following
 │   └──────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+```
+
+## 📜 Governance Tracking & Logging
+The platform maintains a central repository for all lifecycle events in `docs/logs/`:
+- **`org_lifecycle.log`**: A high-level audit trail of all additions and removals.
+- **`org_index.history`**: An immutable record of assigned organizational IDs to enforce the monotonic growth rule.
+- **Execution Logs**: Every provisioning event (`add-org.sh`) generates a complete timestamped debug trace.
 
 ## 🛠️ Implementation Checklist (Platform vs. App)
 
