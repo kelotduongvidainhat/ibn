@@ -50,6 +50,7 @@ function usage() {
     echo "  health      Check ledger heights and synchronization"
     echo "  stats       Monitor CPU/RAM/Network resources"
     echo "  scale       Add a new organization (Auto-ID allocation)"
+    echo "  orderer     Scale Ordering Service (Add Raft Node)"
     echo "  freeze      Restrict an organization's ledger rights"
     echo "  remove      Permanently excise an organization from channel"
     echo "  peer        Add a new peer and join channel (optional)"
@@ -70,14 +71,15 @@ function interactive_menu() {
         echo "2) 📊 Resource Monitor      Real-time CPU/RAM/NET dashboard"
         echo "3) 🏗️  Scale Network      Add a new Organization (Org Factory)"
         echo "4) ➕ Add Peer Node      Expand an Org with a new peer"
-        echo "5) 📦 Chaincode Lifecycle   Approve & Commit (Batch Mode)"
-        echo "6) 📇 Generate Profiles     Create SDK Connection JSONs"
-        echo "7) 👤 Onboard Client       Register new app user"
-        echo "8) ❄️  Freeze Org          Restrict an organization"
-        echo "9) 🗑️  Remove Org          Permanently excise an organization"
-        echo "10) 💥 Fresh Start          Reset and Rebuild Network"
-        echo "11) 🛑 Network Shutdown    Stop and wipe all data"
-        echo "12) 🚪 Exit"
+        echo "5) 🗳️  Add Orderer Node    Scale Raft Consensus Cluster"
+        echo "6) 📦 Chaincode Lifecycle   Approve & Commit (Batch Mode)"
+        echo "7) 📇 Generate Profiles     Create SDK Connection JSONs"
+        echo "8) 👤 Onboard Client       Register new app user"
+        echo "9) ❄️  Freeze Org          Restrict an organization"
+        echo "10) 🗑️  Remove Org          Permanently excise an organization"
+        echo "11) 💥 Fresh Start          Reset and Rebuild Network"
+        echo "12) 🛑 Network Shutdown    Stop and wipe all data"
+        echo "13) 🚪 Exit"
         echo ""
         read -p "Select an option: " opt
 
@@ -91,7 +93,8 @@ function interactive_menu() {
                 chan=${chan:-mychannel}
                 "${SCRIPTS_DIR}/add-peer.sh" "auto" "org${orgn}" "$chan"
                 ;;
-            5)
+            5) "${SCRIPTS_DIR}/add-orderer.sh" ;;
+            6)
                 read -p "CC Name (basic): " ccname
                 ccname=${ccname:-basic}
                 read -p "Version (1.0): " ccver
@@ -100,31 +103,31 @@ function interactive_menu() {
                 "${SCRIPTS_DIR}/mass-approve.sh" "$ccname" "$ccver" "$ccseq"
                 "${SCRIPTS_DIR}/mass-commit.sh" "$ccname" "$ccver" "$ccseq"
                 ;;
-            6) "${SCRIPTS_DIR}/profile-gen.sh" ;;
-            7)
+            7) "${SCRIPTS_DIR}/profile-gen.sh" ;;
+            8)
                 read -p "Client ID: " cid
                 read -p "Org Name (org1): " oname
                 "${SCRIPTS_DIR}/enroll-client.sh" "$cid" "$oname"
                 ;;
-            8)
+            9)
                 read -p "Enter Org Num to Freeze: " fnum
                 "${SCRIPTS_DIR}/freeze-org.sh" "$fnum"
                 ;;
-            9)
+            10)
                 read -p "Enter Org Num to Remove: " rnum
                 "${SCRIPTS_DIR}/remove-org.sh" "$rnum"
                 ;;
-            10)
+            11)
                 echo -e "${RED}${BOLD}🔥 CRITICAL: Total network reset.${NC}"
                 read -p "Proceed with Fresh Start? (y/N): " confirm
                 if [[ $confirm == [yY] ]]; then "${PROJECT_ROOT}/fresh-start.sh"; fi
                 ;;
-            11) 
+            12) 
                 echo -e "${RED}${BOLD}WARNING: This will delete ALL ledger data.${NC}"
                 read -p "Are you sure? (y/N): " confirm
                 if [[ $confirm == [yY] ]]; then docker compose ${COMPOSE_FILES} down --volumes --remove-orphans; fi
                 ;;
-            12|exit|quit) exit 0 ;;
+            13|exit|quit) exit 0 ;;
             *) echo -e "${RED}Invalid option${NC}" ;;
         esac
         echo -e "\n${YELLOW}Press Enter to return to menu...${NC}"

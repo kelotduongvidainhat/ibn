@@ -19,3 +19,11 @@ log.txt
 
 # OS files
 .DS_Store
+
+# Modular Compose (Dynamically generated)
+network/compose/docker-compose-org[2-9]*.yaml
+network/compose/docker-compose-orderers.yaml
+
+# Connection Profiles
+network/connection-profiles/
+backend/connection.json

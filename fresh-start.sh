@@ -43,6 +43,7 @@ EOF
 # Reset modular compose directory for organizations (Keep Org1)
 echo "🗑️ Wiping modular organization configs (Orgs 2+)..."
 rm -f "${PROJECT_ROOT}/network/compose"/docker-compose-org[2-9]*.yaml
+rm -f "${PROJECT_ROOT}/network/compose"/docker-compose-orderers.yaml
 
 echo "🧹 Sanitizing Org1 Compose File..."
 python3 <<EOF

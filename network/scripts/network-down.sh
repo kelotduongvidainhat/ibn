@@ -18,7 +18,7 @@ echo "🛑 [STOP] Bringing down the Fabric network..."
 # Find all modular compose files to ensure thorough cleanup
 COMPOSE_FILES="-f ${COMPOSE_DIR}/docker-compose-base.yaml"
 if [ -d "${COMPOSE_DIR}" ]; then
-    for f in "${COMPOSE_DIR}"/docker-compose-org*.yaml; do
+    for f in "${COMPOSE_DIR}"/docker-compose-org*.yaml "${COMPOSE_DIR}"/docker-compose-orderers.yaml; do
         if [ -f "$f" ]; then
             COMPOSE_FILES="${COMPOSE_FILES} -f $f"
         fi

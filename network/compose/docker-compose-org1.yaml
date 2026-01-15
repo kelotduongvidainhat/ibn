@@ -1,8 +1,6 @@
-
 networks:
   test:
     name: fabric_test
-
 services:
   ca_org1:
     image: hyperledger/fabric-ca:1.5.15
@@ -20,7 +18,6 @@ services:
     - ../organizations/fabric-ca/org1:/etc/hyperledger/fabric-ca-server
     networks:
     - test
-
   couchdb0:
     container_name: couchdb0
     image: couchdb:3.3.2
@@ -31,7 +28,6 @@ services:
     - 5984:5984
     networks:
     - test
-
   peer0.org1.example.com:
     container_name: peer0.org1.example.com
     image: hyperledger/fabric-peer:2.5.14
@@ -73,6 +69,5 @@ services:
     - couchdb0
     networks:
     - test
-
 volumes:
-  peer0.org1.example.com:
+  peer0.org1.example.com: null
