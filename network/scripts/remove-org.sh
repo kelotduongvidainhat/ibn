@@ -127,7 +127,7 @@ if os.path.exists(config_path):
 # 3.2 Clean Modular Docker Config
     compose_module = '${NETWORK_DIR}/compose/docker-compose-org${ORG_NUM}.yaml'
     if os.path.exists(compose_module):
-        print(f"🐳 Removing modular infrastructure for Org{ORG_NUM}")
+        print(f"🐳 Removing modular infrastructure for Org${ORG_NUM}")
         # We handle the 'docker down' outside python for simplicity
         pass 
     
