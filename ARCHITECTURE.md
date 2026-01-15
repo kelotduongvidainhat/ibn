@@ -44,6 +44,12 @@ To scale to multiple applications (Tea-Tracking, Ownership, etc.), the following
     - **Monotonic ID Policy**: IDs are treated as permanent serial numbers. Once an Org ID is retired, it is never reused.
     - **Two-Step Removal Protocol**: Mandates a "Freeze" (soft-lock) before a "Remove" (hard-delete) to ensure data safety.
 
+### 7. Dynamic Consensus Scaling
+*   **The Component**: Orderer Cluster Management (`add-orderer.sh`).
+*   **Decoupling**: The ordering service is a shared infrastructure resource that provides consensus for all channels.
+*   **Platform Role**: Provides the capability to grow the cluster horizontally to maintain an odd-numbered "Safe Quorum."
+*   **Strategic Goal**: Zero-downtime cluster expansion where new orderers join the Raft group dynamically via the `osnadmin` participation API.
+
 ---
 
 ## 🗺️ Conceptual Layers

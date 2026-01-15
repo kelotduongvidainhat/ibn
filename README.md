@@ -91,6 +91,8 @@ The network includes a suite of automation scripts for advanced operations and s
     *   **Governance**: The "Permanent Excise." Destructive operation. Requires organization to be frozen first. Wipes data, crypto material, and logs the excision to the immutable lifecycle log.
 *   **`add-peer.sh <name> <org>`**: 
     *   **Automation**: Registers node with CA, issues TLS certs, and dynamically injects a new peer service into `docker-compose.yaml` with smart port allocation.
+*   **`add-orderer.sh`**:
+    *   **Consensus**: Scales the Raft cluster by provisioning a new orderer node. Automatically handles crypto generation, config injection (Consenter/Address), and `osnadmin` channel joining.
 *   **`peer-join-channel.sh <name> <org> <channel>`**:
     *   **Logic**: Joins a provisioned physical peer to an active logical channel.
 
@@ -164,6 +166,12 @@ To ensure zero collisions between Organizations and Peers running on the same ho
 | **Peer Listen** | 7051 | `7051 + Base + (Peer*100)` | **7051** | **8051** | **9051** |
 | **Peer CouchDB** | 5984 | `5984 + Base + (Peer*100)` | **5984** | **6984** | **7984** |
 | **Peer Ops** | 9443 | `9443 + Base + (Peer*100)` | **9443** | **10443**| **11443**|
+
+### Orderer Scaling Strategy
+Orderer ports follow a `+100` offset per node:
+*   **Orderer (Base)**: Listen `7050`, Admin `7053`.
+*   **Orderer2**: Listen `7150`, Admin `7153`.
+*   **Orderer3**: Listen `7250`, Admin `7253`.
 
 > **⚠️ Reserved Port Exception**: The port range **9000-9999** is reserved for the Orderer CA (9054) and Chaincode (9999).
 > Therefore, **Org3 CA** skips `9054` and is assigned `10054`. Peer ports for Org3 still use the `9000` range (e.g., 9051) as they do not collide with 9054/9999.

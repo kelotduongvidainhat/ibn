@@ -7,6 +7,7 @@ In this strategy, the network is divided by **Owner**. Each file contains the co
 ```text
 network/compose/
   ├── docker-compose-base.yaml (Orderer, CLI, Backend)
+  ├── docker-compose-orderers.yaml (Expansion Orderers)
   ├── docker-compose-org1.yaml (CA, Peer0, CouchDB0)
   ├── docker-compose-org2.yaml (CA, Peer0, CouchDB0)
   └── docker-compose-org3.yaml (CA, Peer0, CouchDB0)

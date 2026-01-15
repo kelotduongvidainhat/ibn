@@ -255,3 +255,24 @@ docker exec cli osnadmin channel join \
   --client-key "/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.key"
 
 echo "✅ [SUCCESS] ${ORDERER_HOST} has been provisioned and joined the cluster!"
+
+# 8. Raft Advice Summary
+echo "--------------------------------------------------------------------------------"
+echo -e "${BOLD}🗳️  RAFT CLUSTER SUMMARY${NC}"
+TOTAL_NODES=$(grep -o "host" "${ARTIFACTS_DIR}/config.json" | wc -l)
+# Since we just added one, calculate from the modified version or increment
+TOTAL_NODES=$(cat "${ARTIFACTS_DIR}/modified_config.json" | jq '.channel_group.groups.Orderer.values.ConsensusType.value.metadata.consenters | length')
+QUORUM=$(( TOTAL_NODES / 2 + 1 ))
+
+echo "Total Orderer Nodes: ${TOTAL_NODES}"
+echo "Quorum Required:     ${QUORUM}"
+
+if (( TOTAL_NODES % 2 == 0 )); then
+    echo -e "${YELLOW}⚠️  ADVISORY: You now have an EVEN number of nodes (${TOTAL_NODES}).${NC}"
+    echo -e "${YELLOW}   In Raft, even-numbered clusters have the same fault tolerance as ${NC}"
+    echo -e "${YELLOW}   the previous odd-numbered size ($((${TOTAL_NODES}-1))). Adding one more node${NC}"
+    echo -e "${YELLOW}   to reach an ODD order (e.g., 3 or 5) is highly recommended.${NC}"
+else
+    echo -e "${GREEN}✨ Cluster is at an ODD order (${TOTAL_NODES}). This is optimal for Raft consensus.${NC}"
+fi
+echo "--------------------------------------------------------------------------------"
