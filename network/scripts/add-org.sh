@@ -312,10 +312,11 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     sleep 2
     # Get current height
     HEIGHT=$(docker exec \
+      -e CORE_PEER_ADDRESS="peer0.${DOMAIN}:7051" \
       -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
       -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp" \
       -e CORE_PEER_TLS_ROOTCERT_FILE="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/peers/peer0.${DOMAIN}/tls/ca.crt" \
-      cli peer channel getinfo -c "${CHANNEL_NAME}" 2>&1 | grep -o 'Height: [0-9]*' | awk '{print $2}')
+      cli peer channel getinfo -c "${CHANNEL_NAME}" 2>&1 | grep -oE '("height"|Height): ?[0-9]+' | grep -oE '[0-9]+')
     
     if [ ! -z "$HEIGHT" ] && [ "$HEIGHT" -gt 1 ]; then
         echo "✅ Peer synced! Current Ledger Height: $HEIGHT"
@@ -335,12 +336,8 @@ fi
 echo "📦 Finalizing Chaincode Lifecycle for ${ORG_NAME}..."
 PACKAGE_ID=$(cat "${NETWORK_DIR}/packaging/package_id.txt")
 
-docker exec \
-  -e CORE_PEER_ADDRESS="peer0.${DOMAIN}:7051" \
-  -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
-  -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp" \
-  -e CORE_PEER_TLS_ROOTCERT_FILE="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/peers/peer0.${DOMAIN}/tls/ca.crt" \
-  cli peer lifecycle chaincode install /opt/gopath/src/github.com/hyperledger/fabric/peer/packaging/basic.tar.gz
+# Chaincode is already installed by add-peer.sh
+# We proceed directly to approval.
 
     MAX_RETRIES=5
     RETRY_COUNT=0
@@ -369,5 +366,9 @@ docker exec \
         set -e
     done
     if [ "$SUCCESS" = false ]; then echo "❌ ERROR: Failed to approve chaincode."; exit 1; fi
+
+# 7. Generate Connection Profile
+echo "📇 Generating Connection Profiles..."
+"${SCRIPTS_DIR}/profile-gen.sh"
 
 echo "✅ [SUCCESS] ${ORG_NAME} has been added and integrated!"

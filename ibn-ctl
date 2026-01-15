@@ -69,14 +69,15 @@ function interactive_menu() {
         echo "1) 🏥 Network Health        Check sync and ledger status"
         echo "2) 📊 Resource Monitor      Real-time CPU/RAM/NET dashboard"
         echo "3) 🏗️  Scale Network      Add a new Organization (Org Factory)"
-        echo "4) 📦 Chaincode Lifecycle   Approve & Commit (Batch Mode)"
-        echo "5) 📇 Generate Profiles     Create SDK Connection JSONs"
-        echo "6) 👤 Onboard Client       Register new app user"
-        echo "7) ❄️  Freeze Org          Restrict an organization"
-        echo "8) 🗑️  Remove Org          Permanently excise an organization"
-        echo "9) 💥 Fresh Start          Reset and Rebuild Network"
-        echo "10) 🛑 Network Shutdown    Stop and wipe all data"
-        echo "11) 🚪 Exit"
+        echo "4) ➕ Add Peer Node      Expand an Org with a new peer"
+        echo "5) 📦 Chaincode Lifecycle   Approve & Commit (Batch Mode)"
+        echo "6) 📇 Generate Profiles     Create SDK Connection JSONs"
+        echo "7) 👤 Onboard Client       Register new app user"
+        echo "8) ❄️  Freeze Org          Restrict an organization"
+        echo "9) 🗑️  Remove Org          Permanently excise an organization"
+        echo "10) 💥 Fresh Start          Reset and Rebuild Network"
+        echo "11) 🛑 Network Shutdown    Stop and wipe all data"
+        echo "12) 🚪 Exit"
         echo ""
         read -p "Select an option: " opt
 
@@ -85,6 +86,12 @@ function interactive_menu() {
             2) "${SCRIPTS_DIR}/network-resource-monitor.sh" ;;
             3) "${SCRIPTS_DIR}/add-org.sh" ;;
             4)
+                read -p "Target Org Num (e.g. 1): " orgn
+                read -p "Channel Name (mychannel): " chan
+                chan=${chan:-mychannel}
+                "${SCRIPTS_DIR}/add-peer.sh" "auto" "org${orgn}" "$chan"
+                ;;
+            5)
                 read -p "CC Name (basic): " ccname
                 ccname=${ccname:-basic}
                 read -p "Version (1.0): " ccver
@@ -93,31 +100,31 @@ function interactive_menu() {
                 "${SCRIPTS_DIR}/mass-approve.sh" "$ccname" "$ccver" "$ccseq"
                 "${SCRIPTS_DIR}/mass-commit.sh" "$ccname" "$ccver" "$ccseq"
                 ;;
-            5) "${SCRIPTS_DIR}/profile-gen.sh" ;;
-            6)
+            6) "${SCRIPTS_DIR}/profile-gen.sh" ;;
+            7)
                 read -p "Client ID: " cid
                 read -p "Org Name (org1): " oname
                 "${SCRIPTS_DIR}/enroll-client.sh" "$cid" "$oname"
                 ;;
-            7)
+            8)
                 read -p "Enter Org Num to Freeze: " fnum
                 "${SCRIPTS_DIR}/freeze-org.sh" "$fnum"
                 ;;
-            8)
+            9)
                 read -p "Enter Org Num to Remove: " rnum
                 "${SCRIPTS_DIR}/remove-org.sh" "$rnum"
                 ;;
-            9)
+            10)
                 echo -e "${RED}${BOLD}🔥 CRITICAL: Total network reset.${NC}"
                 read -p "Proceed with Fresh Start? (y/N): " confirm
                 if [[ $confirm == [yY] ]]; then "${PROJECT_ROOT}/fresh-start.sh"; fi
                 ;;
-            10) 
+            11) 
                 echo -e "${RED}${BOLD}WARNING: This will delete ALL ledger data.${NC}"
                 read -p "Are you sure? (y/N): " confirm
                 if [[ $confirm == [yY] ]]; then docker compose ${COMPOSE_FILES} down --volumes --remove-orphans; fi
                 ;;
-            11|exit|quit) exit 0 ;;
+            12|exit|quit) exit 0 ;;
             *) echo -e "${RED}Invalid option${NC}" ;;
         esac
         echo -e "\n${YELLOW}Press Enter to return to menu...${NC}"

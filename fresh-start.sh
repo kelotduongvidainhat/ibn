@@ -44,6 +44,29 @@ EOF
 echo "🗑️ Wiping modular organization configs (Orgs 2+)..."
 rm -f "${PROJECT_ROOT}/network/compose"/docker-compose-org[2-9]*.yaml
 
+echo "🧹 Sanitizing Org1 Compose File..."
+python3 <<EOF
+import yaml
+import os
+
+path = '${PROJECT_ROOT}/network/compose/docker-compose-org1.yaml'
+if os.path.exists(path):
+    with open(path, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    # Whitelist of base services for Org1
+    keep = ['ca_org1', 'couchdb0', 'peer0.org1.example.com']
+    
+    if 'services' in data:
+        data['services'] = {k: v for k, v in data['services'].items() if k in keep}
+        
+    if 'volumes' in data and data['volumes']:
+        data['volumes'] = {k: v for k, v in data['volumes'].items() if k in keep}
+
+    with open(path, 'w') as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+EOF
+
 # 2. Primary Bootstrap (Org1 + Orderer)
 echo -e "\n${BOLD}Step 2: Initial Bootstrap (Org1 + Orderer)${NC}"
 ./network/scripts/bootstrap-ca.sh

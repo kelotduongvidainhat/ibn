@@ -136,3 +136,39 @@ Platform execution history is centrally managed in `docs/logs/`:
 - **`org_lifecycle.log`**: Unified audit trail for all governance events (Freeze, Remove, Add).
 - **`org_index.history`**: Monotonic index tracker for organization IDs.
 - **`add-org_*.log`**: Complete execution traces for every organization provisioning event.
+
+---
+
+## 🔌 Network Port Allocation Strategy
+
+To ensure zero collisions between Organizations and Peers running on the same host, we use a strict calculation formula based on `ORG_NUM` and `PEER_NUM`.
+
+### Core Infrastructure Ports
+
+| Service | Port | Description |
+| :--- | :--- | :--- |
+| **Backend API** | 8080 | REST Gateway for client applications |
+| **Chaincode (CaaS)** | 9999 | External Smart Contract Service |
+| **Orderer Listen** | 7050 | Raft Consensus Protocol |
+| **Orderer Admin** | 7053 | Channel Participation API |
+| **TLS CA** | 5054 | Root of Trust for Transport Layer Security |
+| **Orderer CA** | 9054 | Identity Provider for Ordering Service |
+
+### Dynamic Organization Ports
+
+**Base Formula**: `Base Offset = (ORG_NUM - 1) * 1000`
+
+| Service | Internal Port | Mapped Port Formula | Org1 Example | Org2 Example | Org3 Example* |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Org CA** | 7054 | `7054 + Base` | **7054** | **8054** | **10054** |
+| **Peer Listen** | 7051 | `7051 + Base + (Peer*100)` | **7051** | **8051** | **9051** |
+| **Peer CouchDB** | 5984 | `5984 + Base + (Peer*100)` | **5984** | **6984** | **7984** |
+| **Peer Ops** | 9443 | `9443 + Base + (Peer*100)` | **9443** | **10443**| **11443**|
+
+> **⚠️ Reserved Port Exception**: The port range **9000-9999** is reserved for the Orderer CA (9054) and Chaincode (9999).
+> Therefore, **Org3 CA** skips `9054` and is assigned `10054`. Peer ports for Org3 still use the `9000` range (e.g., 9051) as they do not collide with 9054/9999.
+
+### Peer Expansion Ports (Same Org)
+When adding extra peers to an organization (e.g., `Peer1`), add `100` to the peer ports:
+*   **Org1 Peer1**: Listen `7151`, Couch `6084`.
+*   **Org1 Peer2**: Listen `7251`, Couch `6184`.
