@@ -35,7 +35,8 @@ Organizations:
   AnchorPeers:
   - Host: peer0.org1.example.com
     Port: 7051
-- Name: Org2MSP
+- &id502
+  Name: Org2MSP
   ID: Org2MSP
   MSPDir: organizations/peerOrganizations/org2.example.com/msp
   Policies:
@@ -54,7 +55,8 @@ Organizations:
   AnchorPeers:
   - Host: peer0.org2.example.com
     Port: 7051
-- Name: Org3MSP
+- &id503
+  Name: Org3MSP
   ID: Org3MSP
   MSPDir: organizations/peerOrganizations/org3.example.com/msp
   Policies:
@@ -73,7 +75,8 @@ Organizations:
   AnchorPeers:
   - Host: peer0.org3.example.com
     Port: 7051
-- Name: Org4MSP
+- &id504
+  Name: Org4MSP
   ID: Org4MSP
   MSPDir: organizations/peerOrganizations/org4.example.com/msp
   Policies:
@@ -92,25 +95,6 @@ Organizations:
   AnchorPeers:
   - Host: peer0.org4.example.com
     Port: 7051
-- Name: Org5MSP
-  ID: Org5MSP
-  MSPDir: organizations/peerOrganizations/org5.example.com/msp
-  Policies:
-    Readers:
-      Type: Signature
-      Rule: OR('Org5MSP.admin', 'Org5MSP.peer', 'Org5MSP.client')
-    Writers:
-      Type: Signature
-      Rule: OR('Org5MSP.admin', 'Org5MSP.client')
-    Admins:
-      Type: Signature
-      Rule: OR('Org5MSP.admin')
-    Endorsement:
-      Type: Signature
-      Rule: OR('Org5MSP.peer')
-  AnchorPeers:
-  - Host: peer0.org5.example.com
-    Port: 7051
 Capabilities:
   Channel:
     V2_0: true
@@ -118,8 +102,9 @@ Capabilities:
     V2_0: true
   Application:
     V2_5: true
-Application:
-  Organizations: null
+
+Application: &ApplicationDefaults
+  Organizations:
   Policies: &id009
     Readers:
       Type: ImplicitMeta
@@ -138,7 +123,8 @@ Application:
       Rule: MAJORITY Endorsement
   Capabilities:
     V2_5: true
-Orderer:
+
+Orderer: &OrdererDefaults
   OrdererType: etcdraft
   EtcdRaft: &id003
     Consenters:
@@ -153,7 +139,7 @@ Orderer:
     MaxMessageCount: 10
     AbsoluteMaxBytes: 99 MB
     PreferredMaxBytes: 512 KB
-  Organizations: null
+  Organizations:
   Policies: &id007
     Readers:
       Type: ImplicitMeta
@@ -169,7 +155,8 @@ Orderer:
       Rule: ANY Writers
   Capabilities:
     V2_0: true
-Channel:
+
+Channel: &ChannelDefaults
   Policies: &id001
     Readers:
       Type: ImplicitMeta
@@ -182,6 +169,7 @@ Channel:
       Rule: MAJORITY Admins
   Capabilities: &id002
     V2_0: true
+
 Profiles:
   Org1Channel:
     Policies: *id001
@@ -201,6 +189,29 @@ Profiles:
     Application:
       Organizations:
       - *id008
+      Policies: *id009
+      Capabilities:
+        V2_5: true
+  DefaultChannel:
+    Policies: *id001
+    Capabilities: *id002
+    Orderer:
+      OrdererType: etcdraft
+      EtcdRaft: *id003
+      Addresses: *id004
+      BatchTimeout: 2s
+      BatchSize: *id005
+      Organizations:
+      - *id006
+      Policies: *id007
+      Capabilities:
+        V2_0: true
+    Application:
+      Organizations:
+      - *id008
+      - *id502
+      - *id503
+      - *id504
       Policies: *id009
       Capabilities:
         V2_5: true

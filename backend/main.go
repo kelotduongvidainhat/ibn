@@ -78,6 +78,8 @@ func main() {
 		admin.GET("/resources", adminHandler.GetResourceUsage)
 		admin.POST("/approve", adminHandler.MassApprove)
 		admin.POST("/commit", adminHandler.MassCommit)
+		admin.POST("/channels", adminHandler.CreateChannel)
+		admin.POST("/upgrade", adminHandler.UpgradeChaincode)
 	}
 
 	// 7. Start Server

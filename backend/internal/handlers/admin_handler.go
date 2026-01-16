@@ -126,3 +126,66 @@ func (h *AdminHandler) MassCommit(c *gin.Context) {
 		"output":  string(output),
 	})
 }
+
+type ChannelRequest struct {
+	Name string `json:"name" binding:"required"`
+}
+
+func (h *AdminHandler) CreateChannel(c *gin.Context) {
+	var req ChannelRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	scriptPath := filepath.Join(h.ScriptsDir, "create-channel.sh")
+	cmd := exec.Command("/bin/bash", scriptPath, req.Name)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  err.Error(),
+			"output": string(output),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Channel created successfully",
+		"output":  string(output),
+	})
+}
+
+type ChaincodeUpgradeRequest struct {
+	Name    string `json:"name" binding:"required"`
+	Channel string `json:"channel"`
+}
+
+func (h *AdminHandler) UpgradeChaincode(c *gin.Context) {
+	var req ChaincodeUpgradeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.Channel == "" {
+		req.Channel = "mychannel"
+	}
+
+	scriptPath := filepath.Join(h.ScriptsDir, "upgrade-cc.sh")
+	cmd := exec.Command("/bin/bash", scriptPath, req.Name, req.Channel)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  err.Error(),
+			"output": string(output),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Chaincode upgraded successfully",
+		"output":  string(output),
+	})
+}

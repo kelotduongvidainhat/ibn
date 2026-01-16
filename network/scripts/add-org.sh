@@ -69,39 +69,39 @@ echo "📍 Assigned New Organization ID: ${ORG_NUM} (${MSP_ID})"
 echo "${ORG_NUM}" >> "$HISTORY_FILE"
 echo "[$(date)] Reserving ${MSP_ID} for provisioning..." >> "${DOCS_LOG_DIR}/org_lifecycle.log"
 
-# 1. Update configtx.yaml (Future proofing)
-echo "📝 Patching configtx.yaml..."
-python3 <<EOF
-import yaml
-config_path = '${NETWORK_DIR}/configtx.yaml'
-with open(config_path, 'r') as f:
-    data = yaml.safe_load(f)
+# 1. Update Modular Configuration
+echo "📝 Registering Org in modular registry..."
+MODULAR_ORG_FILE="${NETWORK_DIR}/config/orgs/${MSP_ID}.yaml"
 
-org_num = '${ORG_NUM}'
-msp_id = '${MSP_ID}'
-org_name = '${ORG_NAME}'
-domain = '${DOMAIN}'
+# Calculate anchor ID offset to avoid collisions with base anchors (id001-id009)
+# Use a high range like 500+ Org Number
+ANCHOR_ID=$(printf "%03d" $((500 + ORG_NUM)))
 
-org_def = {
-    'Name': msp_id,
-    'ID': msp_id,
-    'MSPDir': f'organizations/peerOrganizations/{domain}/msp',
-    'Policies': {
-        'Readers': {'Type': 'Signature', 'Rule': f"OR('{msp_id}.admin', '{msp_id}.peer', '{msp_id}.client')"},
-        'Writers': {'Type': 'Signature', 'Rule': f"OR('{msp_id}.admin', '{msp_id}.client')"},
-        'Admins': {'Type': 'Signature', 'Rule': f"OR('{msp_id}.admin')"},
-        'Endorsement': {'Type': 'Signature', 'Rule': f"OR('{msp_id}.peer')"}
-    },
-    'AnchorPeers': [{'Host': f'peer0.{domain}', 'Port': 7051}]
-}
-
-# Add to Organizations list if not already there
-if not any(o.get('Name') == msp_id for o in data['Organizations']):
-    data['Organizations'].append(org_def)
-
-with open(config_path, 'w') as f:
-    yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+cat > "${MODULAR_ORG_FILE}" <<EOF
+- &id${ANCHOR_ID}
+  Name: ${MSP_ID}
+  ID: ${MSP_ID}
+  MSPDir: organizations/peerOrganizations/${DOMAIN}/msp
+  Policies:
+    Readers:
+      Type: Signature
+      Rule: OR('${MSP_ID}.admin', '${MSP_ID}.peer', '${MSP_ID}.client')
+    Writers:
+      Type: Signature
+      Rule: OR('${MSP_ID}.admin', '${MSP_ID}.client')
+    Admins:
+      Type: Signature
+      Rule: OR('${MSP_ID}.admin')
+    Endorsement:
+      Type: Signature
+      Rule: OR('${MSP_ID}.peer')
+  AnchorPeers:
+  - Host: peer0.${DOMAIN}
+    Port: 7051
 EOF
+
+# Assemble the global configtx.yaml
+"${SCRIPTS_DIR}/assemble-config.sh"
 
 # 2. Update Modular Docker Config
 echo "🐳 Generating modular docker-compose-org${ORG_NUM}.yaml..."
@@ -385,7 +385,11 @@ PACKAGE_ID=$(cat "${NETWORK_DIR}/packaging/package_id.txt")
     done
     if [ "$SUCCESS" = false ]; then echo "❌ ERROR: Failed to approve chaincode."; exit 1; fi
 
-# 7. Generate Connection Profile
+# 7. Sync Anchor Peers
+echo "⚓ Synchronizing Anchor Peers for cross-org discovery..."
+"${SCRIPTS_DIR}/sync-anchors.sh" "${ORG_NUM}" "${CHANNEL_NAME}"
+
+# 8. Generate Connection Profile
 echo "📇 Generating Connection Profiles..."
 "${SCRIPTS_DIR}/profile-gen.sh"
 

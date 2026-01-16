@@ -36,3 +36,9 @@ The first block of the channel (Block 0) and any subsequent configuration blocks
     - Collect Signatures.
     - Submit update.
 4. **Deploying Logic**: Chaincode is deployed *at the channel level*. You install it on Peers, but you **Commit** it to the Channel.
+## 5. Modern Channel Operations
+The IBN platform moves beyond manual channel management through advanced automation:
+
+1. **Governance Audit**: Use `./network/scripts/audit-channel.sh` to generate a transparency report. This inspects membership, anchor peer health, and committed chaincode definitions.
+2. **Dynamic Provisioning**: Use `./network/scripts/create-channel.sh`. This leverages the **Modular Governance Registry** to automatically identify all network members and join them to a new, isolated partition in a single step.
+3. **Atomic Upgrades**: Chaincode can be upgraded across a channel partition using `./network/scripts/upgrade-cc.sh`, handling versioning and global rollout automatically.

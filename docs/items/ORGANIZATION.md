@@ -58,3 +58,12 @@ Removing an organization is a high-stakes operation. The IBN toolset enforces a 
 2. **Recursive Excision**: The removal script iterates through every channel the organization participated in to scrub its membership.
 3. **Infrastructure Wipe**: Stops containers, removes persistent volumes, and wipes cryptographic material.
 4. **SDK Reconciliation**: Automatically refreshes connection profiles (`connection.json`) to remove the excised organization from client applications.
+## 7. Modular Configuration & Registry (Lego Architecture)
+To prevent "Configuration Bloat," the IBN platform uses a modular registry for member management:
+
+1. **Member Registry**: Every organization is defined as a standalone YAML module in `network/config/orgs/`.
+2. **Automated Assembly**: Instead of manual editing, the system uses an **Assembler Engine** (`assemble-config.sh`) that dynamically stitches together these Org modules with the network's base governance template.
+3. **Dual-Path Propagation**: 
+   - **Offline Path**: New entries in the registry ensure that all *future* channels automatically include the organization.
+   - **Online Path**: `configtxlator` is used to surgically inject the organization into *active* channels without requiring a reboot of existing infrastructure.
+4. **Collision Protection**: Anchor peer and YAML IDs are calculated using a monotonic offset system to prevent identity collisions in scaled environments.

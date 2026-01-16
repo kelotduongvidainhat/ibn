@@ -31,7 +31,9 @@ Once a block of transactions is sent from the Orderer:
 4. If valid, it writes the changes to its local Ledger and State Database.
 
 ### C. Anchor Peer (Communication)
-A specific peer designated as the point of contact for other Organizations. It allows different Orgs to "discover" each other via Gossip protocol.
+A specific peer designated as the point of contact for other Organizations. It allows different Orgs to "discover" each other via Gossip protocol. 
+
+**Automation**: The IBN platform automatically synchronizes Anchor Peers using `./network/scripts/sync-anchors.sh` whenever a new Organization is added, ensuring immediate cross-org visibility.
 
 ## 5. Automated Scaling (The "Peer Factory")
 The IBN platform simplifies peer management through automation:

@@ -76,7 +76,12 @@ function interactive_menu() {
         echo "11) 🚜 Remove Orderer      Exise a node from Raft Cluster"
         echo "12) 💥 Fresh Start          Reset and Rebuild Network"
         echo "13) 🛑 Network Shutdown    Stop and wipe all data"
-        echo "14) 🚪 Exit"
+        echo "14) 📺 Create Channel       Provision a new App Channel"
+        echo "15) ⚓ Sync Anchors         Update cross-org discovery"
+        echo "16) 📦 Atomic Upgrade       Increment version & rollout"
+        echo "17) 🧐 Audit Channel       Inspect Governance & Anchors"
+        echo "18) 📋 Org Logs            Stream logs by Organization"
+        echo "19) 🚪 Exit"
         echo ""
         read -p "Select an option: " opt
 
@@ -128,7 +133,33 @@ function interactive_menu() {
                 read -p "Are you sure? (y/N): " confirm
                 if [[ $confirm == [yY] ]]; then "${SCRIPTS_DIR}/network-down.sh"; fi
                 ;;
-            14|exit|quit) exit 0 ;;
+            14)
+                read -p "Enter New Channel Name: " cname
+                if [ -n "$cname" ]; then "${SCRIPTS_DIR}/create-channel.sh" "$cname"; fi
+                ;;
+            15)
+                read -p "Enter Org Num to Sync Anchors: " snum
+                read -p "Channel Name (mychannel): " schan
+                schan=${schan:-mychannel}
+                "${SCRIPTS_DIR}/sync-anchors.sh" "$snum" "$schan"
+                ;;
+            16)
+                read -p "CC Name (basic): " uccn
+                uccn=${uccn:-basic}
+                read -p "Channel (mychannel): " uchan
+                uchan=${uchan:-mychannel}
+                "${SCRIPTS_DIR}/upgrade-cc.sh" "$uccn" "$uchan"
+                ;;
+            17)
+                read -p "Channel (mychannel): " achan
+                achan=${achan:-mychannel}
+                "${SCRIPTS_DIR}/audit-channel.sh" "$achan"
+                ;;
+            18)
+                read -p "Enter Org Num: " lnum
+                "${SCRIPTS_DIR}/org-logs.sh" "$lnum"
+                ;;
+            19|exit|quit) exit 0 ;;
             *) echo -e "${RED}Invalid option${NC}" ;;
         esac
         echo -e "\n${YELLOW}Press Enter to return to menu...${NC}"
@@ -155,6 +186,10 @@ else
         onboard)    "${SCRIPTS_DIR}/enroll-client.sh" "$2" "$3" ;;
         fresh)      "${PROJECT_ROOT}/fresh-start.sh" ;;
         down)       "${SCRIPTS_DIR}/network-down.sh" ;;
+        chan)       "${SCRIPTS_DIR}/create-channel.sh" "$2" ;;
+        upgrade)    "${SCRIPTS_DIR}/upgrade-cc.sh" "$2" "$3" ;;
+        audit)      "${SCRIPTS_DIR}/audit-channel.sh" "$2" ;;
+        logs)       "${SCRIPTS_DIR}/org-logs.sh" "$2" ;;
         help)       usage ;;
         *)          echo -e "${RED}Unknown command: $1${NC}"; usage; exit 1 ;;
     esac

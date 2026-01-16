@@ -100,6 +100,7 @@ services:
     - ../scripts:/opt/gopath/src/github.com/hyperledger/fabric/peer/scripts
     - ../channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts
     - ../packaging:/opt/gopath/src/github.com/hyperledger/fabric/peer/packaging
+    - ../configtx.yaml:/opt/gopath/src/github.com/hyperledger/fabric/peer/configtx.yaml
     networks:
     - test
 

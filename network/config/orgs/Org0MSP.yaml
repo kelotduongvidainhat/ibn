@@ -1,0 +1,16 @@
+- &id006
+  Name: OrdererOrg
+  ID: OrdererMSP
+  MSPDir: organizations/ordererOrganizations/example.com/msp
+  Policies:
+    Readers:
+      Type: Signature
+      Rule: OR('OrdererMSP.member')
+    Writers:
+      Type: Signature
+      Rule: OR('OrdererMSP.member')
+    Admins:
+      Type: Signature
+      Rule: OR('OrdererMSP.admin')
+  OrdererEndpoints:
+  - orderer.example.com:7050

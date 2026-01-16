@@ -28,17 +28,12 @@ echo -e "\n${BOLD}Step 1: Resetting Governance & Configs${NC}"
 rm -rf "${PROJECT_ROOT}/docs/logs/"*
 mkdir -p "${PROJECT_ROOT}/docs/logs"
 
-# Reset configtx.yaml to Base (Org1 + Orderer only)
-python3 <<EOF
-import yaml
-path = '${PROJECT_ROOT}/network/configtx.yaml'
-with open(path, 'r') as f:
-    d = yaml.safe_load(f)
-# Keep only OrdererOrg and Org1MSP in the main Organizations list
-d['Organizations'] = [o for o in d['Organizations'] if o.get('ID') in ['OrdererMSP', 'Org1MSP']]
-with open(path, 'w') as f:
-    yaml.dump(d, f, default_flow_style=False, sort_keys=False)
-EOF
+# Reset Modular Organization Registry (Keep only Orderer and Org1)
+echo "🧹 Wiping modular organization registry (Orgs 2+)..."
+rm -f "${PROJECT_ROOT}/network/config/orgs"/Org[2-9]*.yaml
+
+# Assemble the global configtx.yaml from base + Org0 + Org1
+"${PROJECT_ROOT}/network/scripts/assemble-config.sh"
 
 # Reset modular compose directory for organizations (Keep Org1)
 echo "🗑️ Wiping modular organization configs (Orgs 2+)..."
