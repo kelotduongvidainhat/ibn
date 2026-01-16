@@ -1,6 +1,12 @@
 # 🚀 Hyperledger Fabric MVP Quickstart
 
 Follow these steps to spin up the entire production-style blockchain stack from scratch.
+| 
+| ## 🛠️ Master Control
+| For the easiest experience, use the **ibn-ctl** toolkit to manage the whole lifecycle:
+| ```bash
+| ./ibn-ctl
+| ```
 
 ## 1️⃣ Infrastructure Setup
 Bootstrap the network using Fabric Certificate Authorities:

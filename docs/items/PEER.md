@@ -33,7 +33,15 @@ Once a block of transactions is sent from the Orderer:
 ### C. Anchor Peer (Communication)
 A specific peer designated as the point of contact for other Organizations. It allows different Orgs to "discover" each other via Gossip protocol.
 
-## 4. How to Create/Add a Peer (Logic)
+## 5. Automated Scaling (The "Peer Factory")
+The IBN platform simplifies peer management through automation:
+
+1. **Automation**: Use `./network/scripts/add-peer.sh` or Option 4 in `ibn-ctl`.
+2. **Auto-Discovery**: The toolkit automatically detects current peers and assigns the next logical name (e.g., `peer1`, `peer2`) and non-conflicting port (e.g., 7151, 7251).
+3. **One-Button Deployment**: A single command handles registration, enrollment, container provisioning, channel joining, and **automatic chaincode installation**.
+4. **Consistency**: Using the `ibn-ctl` ensures all peers within an organization share the same configuration, CouchDB state database, and external builder settings.
+
+## 6. How to Create/Add a Peer (Logic)
 
 To bring a peer online, you must:
 1. **Register**: Tell the CA that a new identity named `peerX` exists.

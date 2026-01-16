@@ -38,3 +38,15 @@ To add an Organization to a running network:
     - Get signatures from the **Admins** of existing Orgs.
     - Submit the update to the Orderer.
 4. **Provision Peers**: Once the channel "knows" the Org exists, the Org can now start its Peers and join the channel.
+
+## 5. Automated Organization Scaling (The "Org Factory")
+The IBN platform automates the complex "Admin Dance" required to expand the consortium:
+
+1. **Automation**: Use `./network/scripts/add-org.sh` or Option 3 in `ibn-ctl`.
+2. **Monotonic ID Strategy**: The platform automatically determines the next unique ID (Org2, Org3, etc.) to ensure no naming collisions.
+3. **Automated Governance**: The script handles the complete lifecycle:
+    - Starts the new Org's CA.
+    - Generates the MSP definition.
+    - Performs the manual "config-update" logic automatically inside the `cli` container.
+    - Collects necessary signatures and submits the transaction.
+4. **Member Readiness**: Automatically joins the new Org's first peer and configures it to be ready for transactions.
