@@ -23,84 +23,78 @@ BIN_DIR="${NETWORK_DIR}/../bin"
 SCRIPTS_DIR="${NETWORK_DIR}/scripts"
 ARTIFACTS_DIR="${NETWORK_DIR}/channel-artifacts"
 export PATH="${BIN_DIR}:${PATH}"
+RETIRED_LIST="${NETWORK_DIR}/../docs/logs/retired_orgs.list"
+mkdir -p "$(dirname "$RETIRED_LIST")"
 
 echo "🔥 [ADMIN] Initiating permanent removal of ${ORG_NAME}..."
 
-# 1. Update Channel Configuration
-echo "📝 Step 1: Removing from channel ledger..."
+# 1. Update Channel Configurations (Discovery & Loop)
+echo "📝 Step 1: Scanning all channels for ${MSP_ID}..."
 
-# Fetch the config block
-echo "📦 Fetching the latest configuration block..."
-docker exec \
-  -e CORE_PEER_LOCALMSPID="Org1MSP" \
-  -e CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp \
-  cli peer channel fetch config "channel-artifacts/config_block.pb" -o orderer.example.com:7050 -c "${CHANNEL_NAME}" --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt
+# Discover all channels the network is participating in
+CHANNELS=$(docker exec cli peer channel list | grep -v "Channels peers has joined" | grep -v "listing channels:" | xargs)
 
-CONFIG_BLOCK="${ARTIFACTS_DIR}/config_block.pb"
-CONFIG_JSON="${ARTIFACTS_DIR}/config.json"
+if [ -z "$CHANNELS" ]; then
+    echo "⚠️  No active channels detected. Proceeding to infrastructure cleanup."
+else
+    # Discovery & Safety Scan
+    echo "🔍 Found channels: $CHANNELS"
+    for CH in $CHANNELS; do
+        # Fetch the config block to verify presence and state
+        docker exec \
+          -e CORE_PEER_LOCALMSPID="Org1MSP" \
+          -e CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp \
+          cli peer channel fetch config "channel-artifacts/config_checker.pb" -o orderer.example.com:7050 -c "${CH}" --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt > /dev/null 2>&1 || continue
 
-echo "🔓 Decoding config block..."
-configtxlator proto_decode --input $CONFIG_BLOCK --type common.Block | jq .data.data[0].payload.data.config > $CONFIG_JSON
+        CONFIG_JSON="${ARTIFACTS_DIR}/temp_config.json"
+        docker exec cli configtxlator proto_decode --input channel-artifacts/config_checker.pb --type common.Block | jq .data.data[0].payload.data.config > "$CONFIG_JSON"
 
-# --- SAFETY CHECK ---
-echo "⚙️  Verifying organization state..."
-IS_FROZEN=$(jq -r ".channel_group.groups.Application.groups.\"$MSP_ID\".policies.Admins.policy.value.identities[0].principal.msp_identifier" $CONFIG_JSON)
+        HAS_ORG=$(jq -r ".channel_group.groups.Application.groups | has(\"$MSP_ID\")" "$CONFIG_JSON")
+        if [ "$HAS_ORG" == "true" ]; then
+            IS_FROZEN=$(jq -r ".channel_group.groups.Application.groups.\"$MSP_ID\".policies.Admins.policy.value.identities[0].principal.msp_identifier" "$CONFIG_JSON")
+            if [ "$IS_FROZEN" != "ForbiddenMSP" ]; then
+                echo "❌ ATOMICITY FAIL: Organization '$MSP_ID' is NOT frozen in channel '${CH}'."
+                echo "Aborting removal. All channels must be frozen before permanent excision."
+                exit 2
+            fi
+            CHANNELS_TO_CLEAN="$CHANNELS_TO_CLEAN $CH"
+        fi
+    done
 
-if [ "$IS_FROZEN" != "ForbiddenMSP" ]; then
-    echo "❌ SAFETY FAIL: Organization '$MSP_ID' is NOT frozen."
-    echo "Administrators must run './network/scripts/freeze-org.sh' before permanent removal."
-    exit 2
+    # Removal Loop
+    for CH in $CHANNELS_TO_CLEAN; do
+        echo "--- Execising from Channel: ${CH} ---"
+
+        # Remove from channel
+        echo "   Generating removal transaction for ${CH}..."
+        docker exec \
+          -e CORE_PEER_LOCALMSPID="Org1MSP" \
+          -e CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp \
+          cli /opt/gopath/src/github.com/hyperledger/fabric/peer/scripts/internal_config_remove.sh "${CH}" "${MSP_ID}"
+
+        # Collecting consortium signatures
+        for org_dir in "${NETWORK_DIR}/organizations/peerOrganizations"/*; do
+            [ -d "$org_dir" ] || continue
+            EXISTING_ORG_DOMAIN=$(basename "$org_dir")
+            if [ "$EXISTING_ORG_DOMAIN" == "$DOMAIN" ]; then continue; fi
+            
+            EXISTING_ORG_NUM=$(echo $EXISTING_ORG_DOMAIN | grep -o '[0-9]\+')
+            EXISTING_MSP_ID="Org${EXISTING_ORG_NUM}MSP"
+            
+            echo "   Signing with ${EXISTING_MSP_ID}..."
+            docker exec \
+              -e CORE_PEER_LOCALMSPID="${EXISTING_MSP_ID}" \
+              -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${EXISTING_ORG_DOMAIN}/users/Admin@${EXISTING_ORG_DOMAIN}/msp" \
+              cli peer channel signconfigtx -f update_in_envelope.pb
+        done
+
+        echo "   Submitting removal to orderer..."
+        docker exec \
+          -e CORE_PEER_LOCALMSPID="Org1MSP" \
+          -e CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp \
+          cli peer channel update -f update_in_envelope.pb -c "${CH}" -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt
+    done
 fi
-# --------------------
-
-echo "🗑️ Removing $MSP_ID from Application group..."
-set +e
-docker exec \
-  -e CORE_PEER_LOCALMSPID="Org1MSP" \
-  -e CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp \
-  cli /opt/gopath/src/github.com/hyperledger/fabric/peer/scripts/internal_config_remove.sh "${CHANNEL_NAME}" "${MSP_ID}"
-RESULT=$?
-set -e
-
-if [ $RESULT -eq 2 ]; then
-    echo "--------------------------------------------------------------------------------"
-    echo "❌ ABORTED: Permanent removal is restricted for ACTIVE organizations."
-    echo "Two-Step Protocol required:"
-    echo "  1. Run: ./network/scripts/freeze-org.sh ${ORG_NUM}"
-    echo "  2. Run: ./network/scripts/remove-org.sh ${ORG_NUM}"
-    echo "--------------------------------------------------------------------------------"
-    exit 1
-elif [ $RESULT -ne 0 ]; then
-    echo "❌ ERROR: Failed to prepare removal transaction."
-    exit 1
-fi
-
-echo "✍️  Collecting consortium signatures..."
-for org_dir in "${NETWORK_DIR}/organizations/peerOrganizations"/*; do
-    [ -d "$org_dir" ] || continue
-    EXISTING_ORG_DOMAIN=$(basename "$org_dir")
-    
-    # Skip the one being removed if it's already frozen/unhappy, 
-    # but we usually need majority of REMAINING to sign.
-    if [ "$EXISTING_ORG_DOMAIN" == "$DOMAIN" ]; then
-        continue
-    fi
-    
-    EXISTING_ORG_NUM=$(echo $EXISTING_ORG_DOMAIN | grep -o '[0-9]\+')
-    EXISTING_MSP_ID="Org${EXISTING_ORG_NUM}MSP"
-    
-    echo "Signing with ${EXISTING_MSP_ID}..."
-    docker exec \
-      -e CORE_PEER_LOCALMSPID="${EXISTING_MSP_ID}" \
-      -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${EXISTING_ORG_DOMAIN}/users/Admin@${EXISTING_ORG_DOMAIN}/msp" \
-      cli peer channel signconfigtx -f update_in_envelope.pb
-done
-
-echo "🗳️  Submitting removal transaction to Orderer..."
-docker exec \
-  -e CORE_PEER_LOCALMSPID="Org1MSP" \
-  -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp" \
-  cli peer channel update -f update_in_envelope.pb -c "${CHANNEL_NAME}" -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt
 
 # 2. Cleanup Infrastructure
 echo "🧹 Step 2: Cleaning up infrastructure..."
@@ -148,7 +142,7 @@ EOF
 COMPOSE_MODULE="${NETWORK_DIR}/compose/docker-compose-org${ORG_NUM}.yaml"
 if [ -f "$COMPOSE_MODULE" ]; then
     echo "🐳 Stopping and wiping ${ORG_NAME} containers and volumes..."
-    docker compose -f "$COMPOSE_MODULE" down --volumes --remove-orphans || true
+    docker compose -f "$COMPOSE_MODULE" down --volumes || true
     rm "$COMPOSE_MODULE"
 fi
 
@@ -159,6 +153,11 @@ sudo rm -rf "${NETWORK_DIR}/organizations/fabric-ca/${ORG_NAME}"
 
 LIFECYCLE_LOG="${NETWORK_DIR}/../docs/logs/org_lifecycle.log"
 mkdir -p "$(dirname "$LIFECYCLE_LOG")"
-echo "[$(date)] Permanently removed ${MSP_ID} from the channel." >> "$LIFECYCLE_LOG"
+echo "[$(date)] Permanently removed ${MSP_ID} from the consortium." >> "$LIFECYCLE_LOG"
+echo "${MSP_ID}" >> "${RETIRED_LIST}"
+
+# 5. Refresh SDK Connection Profiles
+echo "📇 Step 5: Refreshing connection profiles..."
+"${SCRIPTS_DIR}/profile-gen.sh"
 
 echo "✅ [SUCCESS] ${ORG_NAME} has been permanently excised from the consortium."

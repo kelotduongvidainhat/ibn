@@ -1,12 +1,15 @@
 # 🚀 Hyperledger Fabric MVP Quickstart
 
 Follow these steps to spin up the entire production-style blockchain stack from scratch.
-| 
-| ## 🛠️ Master Control
-| For the easiest experience, use the **ibn-ctl** toolkit to manage the whole lifecycle:
-| ```bash
-| ./ibn-ctl
-| ```
+
+## 🛠️ Master Control
+For the easiest experience, use the **ibn-ctl** toolkit to manage the whole lifecycle:
+```bash
+# Enter the interactive master control menu
+./ibn-ctl
+```
+
+The toolkit provides "one-button" operations for scaling (Adding/Removing Orgs, Peers, and Orderers), monitoring, and chaincode lifecycle.
 
 ## 1️⃣ Infrastructure Setup
 Bootstrap the network using Fabric Certificate Authorities:
@@ -32,7 +35,7 @@ docker-compose -f network/docker-compose.yaml up -d chaincode-basic
 ### Start Backend API (Local)
 ```bash
 cd backend
-go mod tidy
+# go mod tidy (required first time)
 go run main.go
 ```
 

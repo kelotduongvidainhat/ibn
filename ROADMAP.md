@@ -15,7 +15,7 @@ This document outlines the strategic progression of the IBN (Integrated Blockcha
 ---
 
 ## 🚀 Phase 7: Platform Orchestration & Scaling (Current)
-*   **[x] Dynamic Orderer Scaling**: Automated expansion of the Raft consensus cluster with auto-incrementing IDs and quorum advisory.
+*   **[x] Dynamic Orderer Scaling**: Automated expansion and contraction (Add/Remove) of the Raft consensus cluster with auto-ID detection and quorum advisory.
 *   **[ ] Multi-Channel Automation**: Create scripts to dynamically provision new application channels without manual "Admin Dances."
 *   **[ ] Chaincode Multi-Tenancy**: Configure the backend to support concurrent connections to different chaincodes across various channels.
 *   **[ ] Advanced Endorsement Patterns**: Implement a library of endorsement policy templates (e.g., Majority, AnyOne, All-Or-None) for different governance models.
@@ -52,6 +52,12 @@ This document outlines the strategic progression of the IBN (Integrated Blockcha
 *   **[ ] Kubernetes (K8s) Orchestration**: Transition Docker-compose to Helm Charts for multi-host deployment.
 *   **[ ] Intermediate CAs**: Implement a multi-tier CA hierarchy for production-grade security.
 *   **[ ] External Builders**: Secure the CaaS builder interface for enterprise environments.
+
+## 🔮 Phase 12: Advanced Platform Capabilities (Backlog)
+*   **[ ] Dynamic Channel Creation**: Scripted multi-channel provisioning via API without network restarts.
+*   **[ ] Anchor Peer Management**: Automated setup of Gossip communication between organizations.
+*   **[ ] Snapshot Management**: Capability to take state snapshots for fast peer joining and backups.
+*   **[ ] Integrated Block Explorer**: Lightweight visual dashboard for transaction auditing.
 
 ---
 

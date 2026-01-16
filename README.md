@@ -93,6 +93,8 @@ The network includes a suite of automation scripts for advanced operations and s
     *   **Automation**: Registers node with CA, issues TLS certs, and dynamically injects a new peer service into `docker-compose.yaml` with smart port allocation.
 *   **`add-orderer.sh`**:
     *   **Consensus**: Scales the Raft cluster by provisioning a new orderer node. Automatically handles crypto generation, config injection (Consenter/Address), and `osnadmin` channel joining.
+*   **`remove-orderer.sh`**:
+    *   **Consensus**: Safely decommissioning a Raft node. Performs channel configuration updates to remove the consenter from metadata before wiping the container.
 *   **`peer-join-channel.sh <name> <org> <channel>`**:
     *   **Logic**: Joins a provisioned physical peer to an active logical channel.
 

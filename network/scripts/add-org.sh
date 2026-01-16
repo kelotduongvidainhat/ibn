@@ -40,6 +40,24 @@ ORG_NUM=$(( (MAX_FS_ID > ORG_NUM ? MAX_FS_ID : ORG_NUM) + 1 ))
 ORG_NAME="org${ORG_NUM}"
 DOMAIN="${ORG_NAME}.example.com"
 MSP_ID="Org${ORG_NUM}MSP"
+
+# Check against Retired IDs (Redundancy Lock)
+RETIRED_LIST="${DOCS_LOG_DIR}/retired_orgs.list"
+if [ -f "$RETIRED_LIST" ]; then
+    if grep -q "${MSP_ID}" "$RETIRED_LIST"; then
+        echo "❌ COLLISION DETECTED: organization ID ${MSP_ID} is in the Retired Registry."
+        echo "This ID was previously removed and cannot be reused to maintain ledger integrity."
+        # We increment until we find a free one (extremely rare case but robust)
+        while grep -q "Org${ORG_NUM}MSP" "$RETIRED_LIST"; do
+            ORG_NUM=$((ORG_NUM + 1))
+        done
+        MSP_ID="Org${ORG_NUM}MSP"
+        ORG_NAME="org${ORG_NUM}"
+        DOMAIN="${ORG_NAME}.example.com"
+        echo "✅ Automatically adjusted to next available ID: ${ORG_NUM} (${MSP_ID})"
+    fi
+fi
+
 BIN_DIR="${NETWORK_DIR}/../bin"
 SCRIPTS_DIR="${NETWORK_DIR}/scripts"
 ARTIFACTS_DIR="${NETWORK_DIR}/channel-artifacts"

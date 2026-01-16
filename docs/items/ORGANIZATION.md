@@ -43,10 +43,18 @@ To add an Organization to a running network:
 The IBN platform automates the complex "Admin Dance" required to expand the consortium:
 
 1. **Automation**: Use `./network/scripts/add-org.sh` or Option 3 in `ibn-ctl`.
-2. **Monotonic ID Strategy**: The platform automatically determines the next unique ID (Org2, Org3, etc.) to ensure no naming collisions.
+2. **Monotonic ID Strategy**: The platform uses a "Sticky ID" system. Even if an organization is removed, its unique ID (e.g., `Org2`) is added to a `retired_orgs.list` to prevent reuse, ensuring cryptographic integrity.
 3. **Automated Governance**: The script handles the complete lifecycle:
     - Starts the new Org's CA.
     - Generates the MSP definition.
     - Performs the manual "config-update" logic automatically inside the `cli` container.
     - Collects necessary signatures and submits the transaction.
 4. **Member Readiness**: Automatically joins the new Org's first peer and configures it to be ready for transactions.
+
+## 6. Permanent Removal (The "Clean Room" Protocol)
+Removing an organization is a high-stakes operation. The IBN toolset enforces a rigorous protocol:
+
+1. **Atomic Safety Scan**: Before removal, the system scans **all active channels** to ensure the organization is globally "Frozen."
+2. **Recursive Excision**: The removal script iterates through every channel the organization participated in to scrub its membership.
+3. **Infrastructure Wipe**: Stops containers, removes persistent volumes, and wipes cryptographic material.
+4. **SDK Reconciliation**: Automatically refreshes connection profiles (`connection.json`) to remove the excised organization from client applications.

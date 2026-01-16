@@ -10,16 +10,11 @@ export COMPOSE_IGNORE_ORPHANS=True
 # Discover all modular compose files
 COMPOSE_FILES="-f ${COMPOSE_DIR}/docker-compose-base.yaml"
 if [ -d "${COMPOSE_DIR}" ]; then
-    for f in "${COMPOSE_DIR}"/docker-compose-org*.yaml; do
+    for f in "${COMPOSE_DIR}"/docker-compose-org*.yaml "${COMPOSE_DIR}"/docker-compose-orderers.yaml; do
         if [ -f "$f" ]; then
             COMPOSE_FILES="${COMPOSE_FILES} -f $f"
         fi
     done
-fi
-
-# Fallback for legacy (transitional)
-if [ -f "${PROJECT_ROOT}/network/docker-compose.yaml" ]; then
-    COMPOSE_FILES="${COMPOSE_FILES} -f ${PROJECT_ROOT}/network/docker-compose.yaml"
 fi
 
 # Colors for UI
@@ -51,6 +46,7 @@ function usage() {
     echo "  stats       Monitor CPU/RAM/Network resources"
     echo "  scale       Add a new organization (Auto-ID allocation)"
     echo "  orderer     Scale Ordering Service (Add Raft Node)"
+    echo "  drop-order  Remove an orderer node from cluster"
     echo "  freeze      Restrict an organization's ledger rights"
     echo "  remove      Permanently excise an organization from channel"
     echo "  peer        Add a new peer and join channel (optional)"
@@ -77,9 +73,10 @@ function interactive_menu() {
         echo "8) 👤 Onboard Client       Register new app user"
         echo "9) ❄️  Freeze Org          Restrict an organization"
         echo "10) 🗑️  Remove Org          Permanently excise an organization"
-        echo "11) 💥 Fresh Start          Reset and Rebuild Network"
-        echo "12) 🛑 Network Shutdown    Stop and wipe all data"
-        echo "13) 🚪 Exit"
+        echo "11) 🚜 Remove Orderer      Exise a node from Raft Cluster"
+        echo "12) 💥 Fresh Start          Reset and Rebuild Network"
+        echo "13) 🛑 Network Shutdown    Stop and wipe all data"
+        echo "14) 🚪 Exit"
         echo ""
         read -p "Select an option: " opt
 
@@ -118,16 +115,20 @@ function interactive_menu() {
                 "${SCRIPTS_DIR}/remove-org.sh" "$rnum"
                 ;;
             11)
+                read -p "Enter Orderer Num to Remove (Empty for auto-detect): " rnum
+                "${SCRIPTS_DIR}/remove-orderer.sh" "$rnum"
+                ;;
+            12)
                 echo -e "${RED}${BOLD}🔥 CRITICAL: Total network reset.${NC}"
                 read -p "Proceed with Fresh Start? (y/N): " confirm
                 if [[ $confirm == [yY] ]]; then "${PROJECT_ROOT}/fresh-start.sh"; fi
                 ;;
-            12) 
+            13) 
                 echo -e "${RED}${BOLD}WARNING: This will delete ALL ledger data.${NC}"
                 read -p "Are you sure? (y/N): " confirm
-                if [[ $confirm == [yY] ]]; then docker compose ${COMPOSE_FILES} down --volumes --remove-orphans; fi
+                if [[ $confirm == [yY] ]]; then "${SCRIPTS_DIR}/network-down.sh"; fi
                 ;;
-            13|exit|quit) exit 0 ;;
+            14|exit|quit) exit 0 ;;
             *) echo -e "${RED}Invalid option${NC}" ;;
         esac
         echo -e "\n${YELLOW}Press Enter to return to menu...${NC}"
@@ -140,19 +141,21 @@ if [ -z "$1" ] || [ "$1" == "-i" ]; then
     interactive_menu
 else
     case $1 in
-        health)   "${SCRIPTS_DIR}/network-health.sh" ;;
-        stats)    "${SCRIPTS_DIR}/network-resource-monitor.sh" ;;
-        scale)    "${SCRIPTS_DIR}/add-org.sh" ;;
-        freeze)   "${SCRIPTS_DIR}/freeze-org.sh" "$2" ;;
-        remove)   "${SCRIPTS_DIR}/remove-org.sh" "$2" ;;
-        peer)     "${SCRIPTS_DIR}/add-peer.sh" "$2" "$3" "$4" ;;
-        approve)  "${SCRIPTS_DIR}/mass-approve.sh" "$2" "$3" "$4" ;;
-        commit)   "${SCRIPTS_DIR}/mass-commit.sh" "$2" "$3" "$4" ;;
-        profiles) "${SCRIPTS_DIR}/profile-gen.sh" ;;
-        onboard)  "${SCRIPTS_DIR}/enroll-client.sh" "$2" "$3" ;;
-        fresh)    "${PROJECT_ROOT}/fresh-start.sh" ;;
-        down)     "${SCRIPTS_DIR}/network-down.sh" ;;
-        help)     usage ;;
-        *)        echo -e "${RED}Unknown command: $1${NC}"; usage; exit 1 ;;
+        health)     "${SCRIPTS_DIR}/network-health.sh" ;;
+        stats)      "${SCRIPTS_DIR}/network-resource-monitor.sh" ;;
+        scale)      "${SCRIPTS_DIR}/add-org.sh" ;;
+        orderer)    "${SCRIPTS_DIR}/add-orderer.sh" ;;
+        drop-order) "${SCRIPTS_DIR}/remove-orderer.sh" "$2" ;;
+        freeze)     "${SCRIPTS_DIR}/freeze-org.sh" "$2" ;;
+        remove)     "${SCRIPTS_DIR}/remove-org.sh" "$2" ;;
+        peer)       "${SCRIPTS_DIR}/add-peer.sh" "$2" "$3" "$4" ;;
+        approve)    "${SCRIPTS_DIR}/mass-approve.sh" "$2" "$3" "$4" ;;
+        commit)     "${SCRIPTS_DIR}/mass-commit.sh" "$2" "$3" "$4" ;;
+        profiles)   "${SCRIPTS_DIR}/profile-gen.sh" ;;
+        onboard)    "${SCRIPTS_DIR}/enroll-client.sh" "$2" "$3" ;;
+        fresh)      "${PROJECT_ROOT}/fresh-start.sh" ;;
+        down)       "${SCRIPTS_DIR}/network-down.sh" ;;
+        help)       usage ;;
+        *)          echo -e "${RED}Unknown command: $1${NC}"; usage; exit 1 ;;
     esac
 fi

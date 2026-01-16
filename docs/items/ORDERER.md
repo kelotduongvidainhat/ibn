@@ -26,13 +26,11 @@ The Orderer manages the "Membership List" for every channel. When you run `osnad
 Peers connect to the Orderer via gRPC to "Subscribe" to block updates. As soon as a block is cut, the Orderer sends it to the Peers.
 
 ## 4. How to Manage Orderers (Dynamic Scaling)
+The Ordering Service is designed for horizontal elasticity:
 
-The IBN platform supports dynamic horizontal scaling of the ordering service.
-
-1. **Automation**: Use `./network/scripts/add-orderer.sh` or Option 5 in `ibn-ctl`.
-2. **Horizontal Expansion**: Unlike static networks, you can add new orderer nodes to a running cluster without downtime.
-3. **The "Admin Dance"**: The script fetches the current channel config, adds the new node's TLS certificate to the `Consenters` and `OrdererAddresses` lists, and submits the update.
-4. **Channel Participation**: Once the config is updated, the new container is joined via the `osnadmin` API.
+1.  **Add a Node**: Use `./network/scripts/add-orderer.sh`. This automatically handles CA registration, local enrollment, and the "config-update" logic required to add a new consenter to the Raft cluster.
+2.  **Remove a Node**: Use `./network/scripts/remove-orderer.sh`. This safely removes the node from the metadata, wipes its infrastructure, and recalculates the cluster quorum.
+3.  **Governance (Odd vs Even)**: Raft requires an odd number of nodes for optimal fault tolerance. The toolkit will warn you if a removal leaves the cluster in an even-numbered state.
 
 ## 5. Raft Governance: Odd vs Even Order
 
