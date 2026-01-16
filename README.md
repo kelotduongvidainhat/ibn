@@ -16,6 +16,7 @@ A production-grade Hyperledger Fabric platform designed for rapid deployment, ho
 - **Modern Channeling**: Uses `osnadmin` and Application Channel Participation for dynamic provisioning without network restarts.
 - **Modular Infrastructure**: Horizontal splitting by organization (Found in `network/compose/`) for independent scaling.
 - **Modular Governance Registry**: Moving away from monolithic configuration. Each organization is an independent module in the `network/config/orgs/` registry, dynamically assembled by an automated engine.
+- **Advanced Endorsement Library**: Integrated templates for complex governance models (Majority, All, Veto, AnyOne, Anyone_2) that adapt as the consortium scales.
 
 ---
 
@@ -35,8 +36,8 @@ The `ibn-ctl` script is your primary interface for network operations.
     *   **Consensus**: Safely decommissioning a Raft node. Performs channel configuration updates to remove the consenter from metadata before wiping the container.
 *   **`create-channel.sh <name>`**:
     *   **Provisioning**: Zero-restart application channel creation. Joins all active Orderers and Peers to the new partition.
-*   **`upgrade-cc.sh <name> <channel>`**:
-    *   **Lifecycle**: The "Atomic Upgrader." Automatically increments version/sequence, repackages chaincode, installs on all peers, and coordinates a global rollout.
+*   **`upgrade-cc.sh <name> <channel> [policy_type]`**:
+    *   **Lifecycle**: The "Atomic Upgrader." Automatically increments version/sequence, repackages chaincode, installs on all peers, and coordinates a global rollout with a selectable **Endorsement Policy** (Default: MAJORITY).
 *   **`sync-anchors.sh <org_num> <channel>`**:
     *   **Discovery**: Updates the channel configuration to set the specified Org's peer as an Anchor. Required for cross-organization communication and private data gossip.
 *   **`audit-channel.sh <channel>`**:

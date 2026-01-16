@@ -3,7 +3,7 @@
 A **Channel** is a private "tunnel" or subnet between specific Organizations.
 
 ## 1. Definition
-Transactions happening in Channel A are completely invisible to Peers in Channel B. It is the primary way Fabric provides privacy and data isolation.
+Transactions happening in Channel A are completely invisible to Peers in Channel B. It is the primary way Fabric provides privacy and data isolation. Every channel enforces its own [Endorsement Policies](./ENDORSEMENT_POLICY.md) to govern state transitions.
 
 ## 2. Key Attributes (Properties)
 

@@ -148,7 +148,10 @@ function interactive_menu() {
                 uccn=${uccn:-basic}
                 read -p "Channel (mychannel): " uchan
                 uchan=${uchan:-mychannel}
-                "${SCRIPTS_DIR}/upgrade-cc.sh" "$uccn" "$uchan"
+                echo -e "Policy Types: ${CYAN}MAJORITY, ALL, ANY, VETO, ANY_2${NC}"
+                read -p "Select Policy (MAJORITY): " upol
+                upol=${upol:-MAJORITY}
+                "${SCRIPTS_DIR}/upgrade-cc.sh" "$uccn" "$uchan" "$upol"
                 ;;
             17)
                 read -p "Channel (mychannel): " achan
@@ -187,7 +190,7 @@ else
         fresh)      "${PROJECT_ROOT}/fresh-start.sh" ;;
         down)       "${SCRIPTS_DIR}/network-down.sh" ;;
         chan)       "${SCRIPTS_DIR}/create-channel.sh" "$2" ;;
-        upgrade)    "${SCRIPTS_DIR}/upgrade-cc.sh" "$2" "$3" ;;
+        upgrade)    "${SCRIPTS_DIR}/upgrade-cc.sh" "$2" "$3" "$4" ;;
         audit)      "${SCRIPTS_DIR}/audit-channel.sh" "$2" ;;
         logs)       "${SCRIPTS_DIR}/org-logs.sh" "$2" ;;
         help)       usage ;;

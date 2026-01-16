@@ -8,6 +8,12 @@ CC_NAME=${1:-basic}
 CHANNEL_NAME=${2:-mychannel}
 NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCRIPTS_DIR="${NETWORK_DIR}/scripts"
+POLICY_TYPE=${3:-MAJORITY}
+
+# Generate Policy String
+echo "⚖️  Generating endorsement policy for type: ${POLICY_TYPE}..."
+CC_POLICY=$("${SCRIPTS_DIR}/policy-gen.sh" "${POLICY_TYPE}")
+echo "   Rule: ${CC_POLICY}"
 
 echo "📦 [UPGRADE] Initiating atomic upgrade for chaincode: ${CC_NAME} on ${CHANNEL_NAME}..."
 
@@ -72,7 +78,7 @@ done
 
 # 5. Extract new Package ID
 echo "🔍 Detecting new Package ID for label ${LABEL}..."
-PACKAGE_ID=$(docker exec cli peer lifecycle chaincode queryinstalled | grep "Label: ${LABEL}" | sed 's/Package ID: //; s/, Label:.*$//')
+PACKAGE_ID=$(docker exec cli peer lifecycle chaincode queryinstalled | grep "Label: ${LABEL}" | sed 's/Package ID: //; s/, Label:.*$//' | head -n 1)
 
 if [ -z "$PACKAGE_ID" ]; then
     echo "❌ Error: Could not detect Package ID for label ${LABEL}"
@@ -83,9 +89,9 @@ echo "$PACKAGE_ID" > "${NETWORK_DIR}/packaging/package_id.txt"
 
 # 6. Atomic Multi-Org Rollout
 echo "🚀 Triggering multi-org approval flow..."
-"${SCRIPTS_DIR}/mass-approve.sh" "${CC_NAME}" "${NEXT_VER}" "${NEXT_SEQ}" "${CHANNEL_NAME}"
+"${SCRIPTS_DIR}/mass-approve.sh" "${CC_NAME}" "${NEXT_VER}" "${NEXT_SEQ}" "${CHANNEL_NAME}" "${CC_POLICY}"
 
 echo "🏁 Triggering global commit..."
-"${SCRIPTS_DIR}/mass-commit.sh" "${CC_NAME}" "${NEXT_VER}" "${NEXT_SEQ}" "${CHANNEL_NAME}"
+"${SCRIPTS_DIR}/mass-commit.sh" "${CC_NAME}" "${NEXT_VER}" "${NEXT_SEQ}" "${CHANNEL_NAME}" "${CC_POLICY}"
 
 echo "✅ [SUCCESS] Chaincode '${CC_NAME}' upgraded to v${NEXT_VER} (Sequence ${NEXT_SEQ})."

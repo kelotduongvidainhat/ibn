@@ -6,6 +6,13 @@ CC_NAME=${1:-basic}
 CC_VERSION=${2:-1.0}
 CC_SEQUENCE=${3:-1}
 CHANNEL_NAME=${4:-mychannel}
+CC_POLICY=$5
+
+POLICY_ARGS=()
+if [ -n "$CC_POLICY" ]; then
+    POLICY_ARGS=("--signature-policy" "${CC_POLICY}")
+    echo "⚖️  Using Custom Policy: ${CC_POLICY}"
+fi
 
 NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PACKAGE_ID_FILE="${NETWORK_DIR}/packaging/package_id.txt"
@@ -50,6 +57,7 @@ for ORG_DIR in $ORGS_DIRS; do
         --version "${CC_VERSION}" \
         --package-id "${PACKAGE_ID}" \
         --sequence "${CC_SEQUENCE}" \
+        "${POLICY_ARGS[@]}" \
         --tls \
         --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt \
         --waitForEvent
@@ -65,5 +73,5 @@ echo "--------------------------------------------------------------------------
 echo -e "${BOLD}🔍 Checking Commit Readiness...${NC}"
 docker exec cli peer lifecycle chaincode checkcommitreadiness \
     --channelID "${CHANNEL_NAME}" --name "${CC_NAME}" --version "${CC_VERSION}" \
-    --sequence "${CC_SEQUENCE}" --output json --tls \
+    --sequence "${CC_SEQUENCE}" "${POLICY_ARGS[@]}" --output json --tls \
     --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt

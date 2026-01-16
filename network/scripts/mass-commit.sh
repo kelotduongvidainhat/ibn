@@ -6,6 +6,12 @@ CC_NAME=${1:-basic}
 CC_VERSION=${2:-1.0}
 CC_SEQUENCE=${3:-1}
 CHANNEL_NAME=${4:-mychannel}
+CC_POLICY=$5
+
+POLICY_ARGS=()
+if [ -n "$CC_POLICY" ]; then
+    POLICY_ARGS=("--signature-policy" "${CC_POLICY}")
+fi
 
 NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -45,6 +51,7 @@ docker exec \
     --name "${CC_NAME}" \
     --version "${CC_VERSION}" \
     --sequence "${CC_SEQUENCE}" \
+    "${POLICY_ARGS[@]}" \
     ${PEER_ARGS}
 
 if [ $? -eq 0 ]; then

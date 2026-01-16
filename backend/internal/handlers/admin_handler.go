@@ -67,6 +67,7 @@ type ChaincodeOpRequest struct {
 	Version  string `json:"version" binding:"required"`
 	Sequence string `json:"sequence" binding:"required"`
 	Channel  string `json:"channel"`
+	Policy   string `json:"policy"`
 }
 
 func (h *AdminHandler) MassApprove(c *gin.Context) {
@@ -81,7 +82,7 @@ func (h *AdminHandler) MassApprove(c *gin.Context) {
 	}
 
 	scriptPath := filepath.Join(h.ScriptsDir, "mass-approve.sh")
-	cmd := exec.Command("/bin/bash", scriptPath, req.Name, req.Version, req.Sequence, req.Channel)
+	cmd := exec.Command("/bin/bash", scriptPath, req.Name, req.Version, req.Sequence, req.Channel, req.Policy)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -110,7 +111,7 @@ func (h *AdminHandler) MassCommit(c *gin.Context) {
 	}
 
 	scriptPath := filepath.Join(h.ScriptsDir, "mass-commit.sh")
-	cmd := exec.Command("/bin/bash", scriptPath, req.Name, req.Version, req.Sequence, req.Channel)
+	cmd := exec.Command("/bin/bash", scriptPath, req.Name, req.Version, req.Sequence, req.Channel, req.Policy)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -159,6 +160,7 @@ func (h *AdminHandler) CreateChannel(c *gin.Context) {
 type ChaincodeUpgradeRequest struct {
 	Name    string `json:"name" binding:"required"`
 	Channel string `json:"channel"`
+	Policy  string `json:"policy"`
 }
 
 func (h *AdminHandler) UpgradeChaincode(c *gin.Context) {
@@ -172,8 +174,12 @@ func (h *AdminHandler) UpgradeChaincode(c *gin.Context) {
 		req.Channel = "mychannel"
 	}
 
+	if req.Policy == "" {
+		req.Policy = "MAJORITY"
+	}
+
 	scriptPath := filepath.Join(h.ScriptsDir, "upgrade-cc.sh")
-	cmd := exec.Command("/bin/bash", scriptPath, req.Name, req.Channel)
+	cmd := exec.Command("/bin/bash", scriptPath, req.Name, req.Channel, req.Policy)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {

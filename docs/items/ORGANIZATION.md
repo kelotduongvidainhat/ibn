@@ -25,7 +25,7 @@ Most network changes require a **Majority** of Organizations to sign.
 - *Upgrading Code*: Org1 and Org2 must both approve.
 
 ### C. Endorsement Policy
-The "Rules of the Game." For example: "For a transaction to be valid, we need signatures from both `Org1` AND `Org2`."
+The "Rules of the Game." For example: "For a transaction to be valid, we need signatures from both `Org1` AND `Org2`." See [Endorsement Policies](./ENDORSEMENT_POLICY.md) for advanced patterns.
 
 ## 4. How to Create/Add an Organization (Logic)
 

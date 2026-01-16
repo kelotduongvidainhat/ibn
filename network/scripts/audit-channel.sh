@@ -106,14 +106,21 @@ echo "$COMMITTED" | jq -c '.chaincode_definitions[] // empty' | while read -r cc
     if [ "$VPARAM" == "$DEFAULT_FINGERPRINT" ]; then
         POLICY="Channel Default (Majority)"
     else
-        # If it's custom, we show a simplified decoded string
-        DECODED=$(echo "$VPARAM" | base64 -d 2>/dev/null || echo "Unknown")
-        # Extract MSP IDs found in the binary blob
+        # If it's custom, extract MSPs and try to detect the relationship
+        DECODED=$(echo "$VPARAM" | base64 -d 2>/dev/null | tr -d '\0' || echo "Unknown")
         MSPS=$(echo "$DECODED" | grep -oE 'Org[0-9]+MSP' | sort -u | tr '\n' ',' | sed 's/,$//')
-        if [ -n "$MSPS" ]; then
-            POLICY="Custom: OR(${MSPS})"
+        
+        # Extract threshold byte (8th byte in our generated policies)
+        THRESHOLD_HEX=$(echo "$VPARAM" | base64 -d 2>/dev/null | xxd -p | head -c 16 | tail -c 2)
+        THRESHOLD=$((16#$THRESHOLD_HEX))
+        ORG_COUNT=$(echo "$MSPS" | tr ',' '\n' | wc -l)
+
+        if [ "$THRESHOLD" -eq 1 ]; then
+            POLICY="Custom: ANY ($MSPS)"
+        elif [ "$THRESHOLD" -eq "$ORG_COUNT" ]; then
+            POLICY="Custom: ALL ($MSPS)"
         else
-            POLICY="Custom (Opaque)"
+            POLICY="Custom: OutOf($THRESHOLD) ($MSPS)"
         fi
     fi
     printf "%-15s | %-10s | %-10s | %-30s\n" "$NAME" "$VER" "$SEQ" "$POLICY"
