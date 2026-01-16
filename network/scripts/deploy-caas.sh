@@ -14,9 +14,27 @@ PACKAGE_DIR="${NETWORK_DIR}/packaging"
 
 echo "=== Deploying CaaS Chaincode: ${CC_NAME} ==="
 
-# 1. Install Chaincode
-echo "--- Installing/Checking chaincode package on peer0.org1.example.com ---"
-docker exec cli peer lifecycle chaincode install "/opt/gopath/src/github.com/hyperledger/fabric/peer/packaging/${CC_NAME}.tar.gz" > log.txt 2>&1 || true
+# 1. Dynamic Packaging
+echo "--- Dynamically packaging CaaS chaincode (v${CC_VERSION}) ---"
+LABEL="${CC_NAME}_${CC_VERSION}"
+PACKAGE_NAME="${LABEL}.tar.gz"
+
+cat <<EOF > "${PACKAGE_DIR}/metadata.json"
+{"type":"ccaas","label":"${LABEL}"}
+EOF
+
+if [ ! -f "${PACKAGE_DIR}/connection.json" ]; then
+    echo "{\"address\":\"chaincode-basic:9999\",\"dial_timeout\":\"10s\",\"tls_required\":false}" > "${PACKAGE_DIR}/connection.json"
+fi
+
+cd "${PACKAGE_DIR}"
+tar -czf code.tar.gz connection.json
+tar -czf "${PACKAGE_NAME}" metadata.json code.tar.gz
+cd - > /dev/null
+
+# 2. Install Chaincode
+echo "--- Installing package ${PACKAGE_NAME} on peer0.org1.example.com ---"
+docker exec cli peer lifecycle chaincode install "packaging/${PACKAGE_NAME}" > log.txt 2>&1 || true
 cat log.txt
 
 # Extract Package ID from install or queryinstalled
