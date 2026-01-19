@@ -22,7 +22,7 @@ This document outlines the strategic progression of the IBN (Integrated Blockcha
 *   **[x] Chaincode Multi-Tenancy**: Configure the backend to support concurrent connections to different chaincodes across various channels.
 *   **[x] Advanced Endorsement Patterns**: Implement a library of endorsement policy templates (e.g., Majority, AnyOne, All-Or-None) for different governance models.
 *   **[x] Private Data Collections (PDC)**: Establish standard patterns for managing sensitive data using side-databases that are decoupled from specific app logic.
-*   **[ ] Inter-Channel Communication**: Research and implement logic for sharing specific state/assets between channels safely.
+*   **[x] Inter-Channel Communication**: Research and implement logic for sharing specific state/assets between channels safely.
 
 ---
 

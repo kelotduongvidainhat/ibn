@@ -117,3 +117,23 @@ func (h *AssetHandler) QueryAssets(c *gin.Context) {
 
 	c.JSON(http.StatusOK, assets)
 }
+
+func (h *AssetHandler) ReadAssetFromBridge(c *gin.Context) {
+	targetChannel := c.Param("targetChannel")
+	assetID := c.Param("id")
+
+	contract := h.getContract(c)
+	evaluateResult, err := contract.EvaluateTransaction("ReadAssetFromChannel", targetChannel, assetID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Failed to bridge query: " + err.Error()})
+		return
+	}
+
+	var asset models.Asset
+	if err := json.Unmarshal(evaluateResult, &asset); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unmarshal result: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, asset)
+}

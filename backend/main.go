@@ -69,6 +69,7 @@ func main() {
 		api.GET("/:channel/:ccname/assets/query", assetHandler.QueryAssets)
 		api.POST("/:channel/:ccname/assets", assetHandler.CreateAsset)
 		api.GET("/:channel/:ccname/assets/:id", assetHandler.ReadAsset)
+		api.GET("/:channel/:ccname/bridge/:targetChannel/:id", assetHandler.ReadAssetFromBridge)
 
 		// Legacy routes (Fallback to env defaults)
 		api.GET("/assets", assetHandler.GetAllAssets)

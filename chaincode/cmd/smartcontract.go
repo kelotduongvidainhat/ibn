@@ -183,6 +183,27 @@ func (s *SmartContract) GetAllAssets(ctx contractapi.TransactionContextInterface
 	return s.constructQueryResponseFromIterator(ctx, resultsIterator)
 }
 
+// ReadAssetFromChannel performs a cross-channel query to retrieve an asset from a target channel
+func (s *SmartContract) ReadAssetFromChannel(ctx contractapi.TransactionContextInterface, targetChannel string, assetID string) (*Asset, error) {
+	// Prepare arguments for the cross-channel call
+	args := [][]byte{[]byte("ReadAsset"), []byte(assetID)}
+
+	// Direct cross-channel call (Read-only)
+	// We assume the chaincode name is also "basic" on the target channel
+	response := ctx.GetStub().InvokeChaincode("basic", args, targetChannel)
+
+	if response.Status != 200 {
+		return nil, fmt.Errorf("failed to query channel %s: %s", targetChannel, response.Message)
+	}
+
+	var asset Asset
+	if err := json.Unmarshal(response.Payload, &asset); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal cross-channel response: %v", err)
+	}
+
+	return &asset, nil
+}
+
 // constructQueryResponseFromIterator is a helper to parse iterator results into an Asset slice
 func (s *SmartContract) constructQueryResponseFromIterator(ctx contractapi.TransactionContextInterface, resultsIterator shim.StateQueryIteratorInterface) ([]*Asset, error) {
 	var assets []*Asset
