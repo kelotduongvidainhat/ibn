@@ -102,8 +102,10 @@ function interactive_menu() {
                 read -p "Version (1.0): " ccver
                 ccver=${ccver:-1.0}
                 read -p "Sequence: " ccseq
-                "${SCRIPTS_DIR}/mass-approve.sh" "$ccname" "$ccver" "$ccseq"
-                "${SCRIPTS_DIR}/mass-commit.sh" "$ccname" "$ccver" "$ccseq"
+                read -p "Channel (mychannel): " ccchan
+                ccchan=${ccchan:-mychannel}
+                "${SCRIPTS_DIR}/mass-approve.sh" "$ccname" "$ccver" "$ccseq" "$ccchan"
+                "${SCRIPTS_DIR}/mass-commit.sh" "$ccname" "$ccver" "$ccseq" "$ccchan"
                 ;;
             7) "${SCRIPTS_DIR}/profile-gen.sh" ;;
             8)
@@ -135,7 +137,12 @@ function interactive_menu() {
                 ;;
             14)
                 read -p "Enter New Channel Name: " cname
-                if [ -n "$cname" ]; then "${SCRIPTS_DIR}/create-channel.sh" "$cname"; fi
+                if [ -n "$cname" ]; then 
+                    read -p "Profile (TwoOrgChannel/DefaultChannel): " cprof
+                    cprof=${cprof:-DefaultChannel}
+                    read -p "Member Orgs (comma-separated, e.g. org1,org2) [Empty for ALL]: " corgs
+                    "${SCRIPTS_DIR}/create-channel.sh" "$cname" "$cprof" "$corgs"
+                fi
                 ;;
             15)
                 read -p "Enter Org Num to Sync Anchors: " snum

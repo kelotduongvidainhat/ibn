@@ -5,10 +5,10 @@
 set -e
 
 # Configuration
-CHANNEL_NAME="mychannel"
+CHANNEL_NAME=${1:-"mychannel"}
 CC_NAME="basic"
-CC_VERSION="1.0"
-CC_SEQUENCE="1"
+CC_VERSION=${2:-"1.0"}
+CC_SEQUENCE=${3:-"1"}
 NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PACKAGE_DIR="${NETWORK_DIR}/packaging"
 

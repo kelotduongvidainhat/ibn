@@ -30,12 +30,31 @@ ORGS_DIRS=$(ls -d "${NETWORK_DIR}/organizations/peerOrganizations/"* 2>/dev/null
 
 for ORG_DIR in $ORGS_DIRS; do
     DOMAIN=$(basename "$ORG_DIR")
-    PEER_NAME="peer0.${DOMAIN}"
-    TLS_ROOT="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/peers/${PEER_NAME}/tls/ca.crt"
+    ORG_NUM=$(echo $DOMAIN | grep -o '[0-9]\+' | head -n 1)
+    MSP_ID="Org${ORG_NUM}MSP"
     
-    # Append the peer address and its root cert to the argument string
-    PEER_ARGS="${PEER_ARGS} --peerAddresses ${PEER_NAME}:7051 --tlsRootCertFiles ${TLS_ROOT}"
-    echo "📍 Including Endorser: ${PEER_NAME}"
+    for peer_dir in "${ORG_DIR}/peers"/*; do
+        [ -d "$peer_dir" ] || continue
+        PEER_NAME=$(basename "$peer_dir")
+        TLS_ROOT="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/peers/${PEER_NAME}/tls/ca.crt"
+        
+        # Verify if peer is joined to the channel before including in commit
+        IS_JOINED=$(docker exec \
+          -e CORE_PEER_ADDRESS="${PEER_NAME}:7051" \
+          -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
+          -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp" \
+          -e CORE_PEER_TLS_ROOTCERT_FILE="${TLS_ROOT}" \
+          cli peer channel list | grep -q "^${CHANNEL_NAME}$" && echo "yes" || echo "no")
+
+        if [ "$IS_JOINED" == "no" ]; then
+            echo -e "⏭️  Skipping Endorser: ${PEER_NAME} (Not joined to ${CHANNEL_NAME})"
+            continue
+        fi
+
+        # Append the peer address and its root cert to the argument string
+        PEER_ARGS="${PEER_ARGS} --peerAddresses ${PEER_NAME}:7051 --tlsRootCertFiles ${TLS_ROOT}"
+        echo "📍 Including Endorser: ${PEER_NAME}"
+    done
 done
 
 # Check for collections config

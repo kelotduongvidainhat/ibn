@@ -50,9 +50,7 @@ func main() {
 	}
 	defer gateway.Close()
 
-	// 3. Setup Network Objects
-	network := gateway.GetNetwork(os.Getenv("CHANNEL_NAME"))
-	contract := network.GetContract(os.Getenv("CHAINCODE_NAME"))
+
 
 	// 4. Initialize API Server
 	r := gin.Default()
@@ -61,11 +59,18 @@ func main() {
 	r.Use(cors.Default())
 
 	// 6. Routes
-	assetHandler := &handlers.AssetHandler{Contract: contract}
+	assetHandler := &handlers.AssetHandler{Gateway: gateway}
 	adminHandler := handlers.NewAdminHandler()
 
 	api := r.Group("/api")
 	{
+		// Parameterized routes (New)
+		api.GET("/:channel/:ccname/assets", assetHandler.GetAllAssets)
+		api.GET("/:channel/:ccname/assets/query", assetHandler.QueryAssets)
+		api.POST("/:channel/:ccname/assets", assetHandler.CreateAsset)
+		api.GET("/:channel/:ccname/assets/:id", assetHandler.ReadAsset)
+
+		// Legacy routes (Fallback to env defaults)
 		api.GET("/assets", assetHandler.GetAllAssets)
 		api.GET("/assets/query", assetHandler.QueryAssets)
 		api.POST("/assets", assetHandler.CreateAsset)

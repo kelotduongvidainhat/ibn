@@ -47,18 +47,40 @@ fi
 
 for ORG_DIR in $ORGS_DIRS; do
     DOMAIN=$(basename "$ORG_DIR")
-    # Extract Org number/name for MSP ID
     ORG_NUM=$(echo $DOMAIN | grep -o '[0-9]\+' | head -n 1)
-    if [ -z "$ORG_NUM" ]; then continue; fi
-    
     MSP_ID="Org${ORG_NUM}MSP"
-    echo -ne "✍️  Approving for ${BOLD}${MSP_ID}${NC} (${DOMAIN})... "
+    
+    # Try to find a peer from this org that is joined to the channel
+    TARGET_PEER=""
+    for peer_dir in "${ORG_DIR}/peers"/*; do
+        [ -d "$peer_dir" ] || continue
+        PEER_NAME=$(basename "$peer_dir")
+        
+        IS_JOINED=$(docker exec \
+          -e CORE_PEER_ADDRESS="${PEER_NAME}:7051" \
+          -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
+          -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp" \
+          -e CORE_PEER_TLS_ROOTCERT_FILE="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/peers/${PEER_NAME}/tls/ca.crt" \
+          cli peer channel list | grep -q "^${CHANNEL_NAME}$" && echo "yes" || echo "no")
+
+        if [ "$IS_JOINED" == "yes" ]; then
+            TARGET_PEER=$PEER_NAME
+            break
+        fi
+    done
+
+    if [ -z "$TARGET_PEER" ]; then
+        echo -e "⏭️  Skipping ${BOLD}${MSP_ID}${NC} (No peers joined to ${CHANNEL_NAME})"
+        continue
+    fi
+
+    echo -ne "✍️  Approving for ${BOLD}${MSP_ID}${NC} (${DOMAIN}) via ${TARGET_PEER}... "
 
     docker exec \
-      -e CORE_PEER_ADDRESS="peer0.${DOMAIN}:7051" \
+      -e CORE_PEER_ADDRESS="${TARGET_PEER}:7051" \
       -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
       -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp" \
-      -e CORE_PEER_TLS_ROOTCERT_FILE="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/peers/peer0.${DOMAIN}/tls/ca.crt" \
+      -e CORE_PEER_TLS_ROOTCERT_FILE="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/peers/${TARGET_PEER}/tls/ca.crt" \
       cli peer lifecycle chaincode approveformyorg \
         --channelID "${CHANNEL_NAME}" \
         --name "${CC_NAME}" \
