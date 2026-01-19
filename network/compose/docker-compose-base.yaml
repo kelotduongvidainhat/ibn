@@ -112,7 +112,7 @@ services:
     image: basic-cc-image
     environment:
     - CHAINCODE_SERVER_ADDRESS=0.0.0.0:9999
-    - CHAINCODE_ID=basic_1.0:placeholder
+    - CHAINCODE_ID=${CHAINCODE_ID}
     ports:
     - 9999:9999
     networks:

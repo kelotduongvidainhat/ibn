@@ -87,6 +87,13 @@ fi
 echo "🔗 New Package ID: ${PACKAGE_ID}"
 echo "$PACKAGE_ID" > "${NETWORK_DIR}/packaging/package_id.txt"
 
+# Sync chaincode/.env
+CC_ENV="${NETWORK_DIR}/../chaincode/.env"
+if [ -f "$CC_ENV" ]; then
+    sed -i "s/^CHAINCODE_ID=.*/CHAINCODE_ID=${PACKAGE_ID}/" "$CC_ENV"
+    echo "✅ Synchronized ${CC_ENV} with new Package ID"
+fi
+
 # 6. Atomic Multi-Org Rollout
 echo "🚀 Triggering multi-org approval flow..."
 "${SCRIPTS_DIR}/mass-approve.sh" "${CC_NAME}" "${NEXT_VER}" "${NEXT_SEQ}" "${CHANNEL_NAME}" "${CC_POLICY}"

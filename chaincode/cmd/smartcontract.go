@@ -19,8 +19,11 @@ type Asset struct {
 	Color          string `json:"Color"`          // Asset color property
 	Size           int    `json:"Size"`           // Asset size property
 	Owner          string `json:"Owner"`          // Current owner of the asset
-	AppraisedValue int    `json:"AppraisedValue"` // Market value of the asset
+	AppraisedValue int    `json:"AppraisedValue"` // Market value of the asset (Private)
 }
+
+const collectionName = "assetCollection"
+
 // InitLedger adds a base set of assets to the ledger
 func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
 	assets := []Asset{
@@ -33,7 +36,14 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 	}
 
 	for _, asset := range assets {
-		assetJSON, err := json.Marshal(asset)
+		// Public data
+		assetPublic := Asset{
+			ID:    asset.ID,
+			Color: asset.Color,
+			Size:  asset.Size,
+			Owner: asset.Owner,
+		}
+		assetJSON, err := json.Marshal(assetPublic)
 		if err != nil {
 			return err
 		}
@@ -42,65 +52,94 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 		if err != nil {
 			return fmt.Errorf("failed to put to world state. %v", err)
 		}
+
+		// Private data
+		err = ctx.GetStub().PutPrivateData(collectionName, asset.ID, []byte(fmt.Sprintf("%d", asset.AppraisedValue)))
+		if err != nil {
+			return fmt.Errorf("failed to put to private collection. %v", err)
+		}
 	}
 
 	return nil
 }
 
 // CreateAsset issues a new asset to the world state
-func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface, id string, color string, size int, owner string, appraisedValue int) error {
-	fmt.Printf("DEBUG: CreateAsset called for ID: %s, Color: %s, Size: %d, Owner: %s, Value: %d\n", id, color, size, owner, appraisedValue)
+func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface, id string, color string, size int, owner string) error {
+	fmt.Printf("DEBUG: CreateAsset called for ID: %s, Color: %s, Size: %d, Owner: %s\n", id, color, size, owner)
+	
 	// Check if asset already exists
 	exists, err := s.AssetExists(ctx, id)
 	if err != nil {
-		return err // Return if system error occurs
+		return err
 	}
 	if exists {
-		return fmt.Errorf("the asset %s already exists", id) // Return error if ID is taken
+		return fmt.Errorf("the asset %s already exists", id)
 	}
 
-	// Create the asset object
+	// Get private data from transient map
+	transientMap, err := ctx.GetStub().GetTransient()
+	if err != nil {
+		return fmt.Errorf("error getting transient: %v", err)
+	}
+
+	appraisedValueJSON, ok := transientMap["appraisedValue"]
+	if !ok {
+		return fmt.Errorf("appraisedValue must be provided in transient map")
+	}
+
+	// Create the asset object for public storage
 	asset := Asset{
-		ID:             id,
-		Color:          color,
-		Size:           size,
-		Owner:          owner,
-		AppraisedValue: appraisedValue,
+		ID:    id,
+		Color: color,
+		Size:  size,
+		Owner: owner,
 	}
 	
-	// Convert asset to JSON bytes
 	assetJSON, err := json.Marshal(asset)
 	if err != nil {
-		return err // Return if marshaling fails
+		return err
 	}
 
-	// Put the asset on the ledger (key-value pair)
-	fmt.Printf("DEBUG: Putting state for %s\n", id)
-	return ctx.GetStub().PutState(id, assetJSON)
+	// Put the asset on the public ledger
+	err = ctx.GetStub().PutState(id, assetJSON)
+	if err != nil {
+		return err
+	}
+
+	// Put the private data
+	return ctx.GetStub().PutPrivateData(collectionName, id, appraisedValueJSON)
 }
 
 // ReadAsset returns the asset stored in the world state with given id
 func (s *SmartContract) ReadAsset(ctx contractapi.TransactionContextInterface, id string) (*Asset, error) {
 	fmt.Printf("DEBUG: ReadAsset called for ID: %s\n", id)
-	// Retrieve the asset from the ledger
+	
+	// Retrieve the public asset from the ledger
 	assetJSON, err := ctx.GetStub().GetState(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read from world state: %v", err)
 	}
 	if assetJSON == nil {
-		fmt.Printf("DEBUG: Asset %s not found\n", id)
-		return nil, fmt.Errorf("the asset %s does not exist", id) // Error if not found
+		return nil, fmt.Errorf("the asset %s does not exist", id)
 	}
 
-	// Unmarshal JSON bytes into Asset struct
 	var asset Asset
 	err = json.Unmarshal(assetJSON, &asset)
 	if err != nil {
-		return nil, err // Return if unmarshaling fails
+		return nil, err
 	}
 
-	fmt.Printf("DEBUG: Asset found: %+v\n", asset)
-	return &asset, nil // Return the asset object
+	// Try to retrieve private data
+	privateData, err := ctx.GetStub().GetPrivateData(collectionName, id)
+	if err == nil && privateData != nil {
+		var appraisedValue int
+		_, err = fmt.Sscanf(string(privateData), "%d", &appraisedValue)
+		if err == nil {
+			asset.AppraisedValue = appraisedValue
+		}
+	}
+
+	return &asset, nil
 }
 
 // AssetExists returns true when asset with given ID exists in world state
@@ -122,7 +161,7 @@ func (s *SmartContract) QueryAssets(ctx contractapi.TransactionContextInterface,
 	}
 	defer resultsIterator.Close()
 
-	return constructQueryResponseFromIterator(resultsIterator)
+	return s.constructQueryResponseFromIterator(ctx, resultsIterator)
 }
 
 // GetAssetsByColor demonstrates a specialized high-level query
@@ -139,11 +178,11 @@ func (s *SmartContract) GetAllAssets(ctx contractapi.TransactionContextInterface
 	}
 	defer resultsIterator.Close()
 
-	return constructQueryResponseFromIterator(resultsIterator)
+	return s.constructQueryResponseFromIterator(ctx, resultsIterator)
 }
 
 // constructQueryResponseFromIterator is a helper to parse iterator results into an Asset slice
-func constructQueryResponseFromIterator(resultsIterator shim.StateQueryIteratorInterface) ([]*Asset, error) {
+func (s *SmartContract) constructQueryResponseFromIterator(ctx contractapi.TransactionContextInterface, resultsIterator shim.StateQueryIteratorInterface) ([]*Asset, error) {
 	var assets []*Asset
 	for resultsIterator.HasNext() {
 		queryResponse, err := resultsIterator.Next()
@@ -156,6 +195,17 @@ func constructQueryResponseFromIterator(resultsIterator shim.StateQueryIteratorI
 		if err != nil {
 			return nil, err
 		}
+
+		// Try to enrich with private data
+		privateData, err := ctx.GetStub().GetPrivateData(collectionName, asset.ID)
+		if err == nil && privateData != nil {
+			var appraisedValue int
+			_, err = fmt.Sscanf(string(privateData), "%d", &appraisedValue)
+			if err == nil {
+				asset.AppraisedValue = appraisedValue
+			}
+		}
+
 		assets = append(assets, &asset)
 	}
 

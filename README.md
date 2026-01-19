@@ -17,6 +17,7 @@ A production-grade Hyperledger Fabric platform designed for rapid deployment, ho
 - **Modular Infrastructure**: Horizontal splitting by organization (Found in `network/compose/`) for independent scaling.
 - **Modular Governance Registry**: Moving away from monolithic configuration. Each organization is an independent module in the `network/config/orgs/` registry, dynamically assembled by an automated engine.
 - **Advanced Endorsement Library**: Integrated templates for complex governance models (Majority, All, Veto, AnyOne, Anyone_2) that adapt as the consortium scales.
+- **Private Data Collections (PDC)**: Implementation of `assetCollection` for sensitive fields like `AppraisedValue`. Ensures that only authorized organizations can read sensitive field-level data, while the asset's existence remains public.
 
 ---
 

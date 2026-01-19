@@ -37,6 +37,14 @@ echo "--------------------------------------------------------------------------
 # Discover all organizations
 ORGS_DIRS=$(ls -d "${NETWORK_DIR}/organizations/peerOrganizations/"* 2>/dev/null)
 
+# Check for collections config
+COLLECTIONS_CONFIG="${NETWORK_DIR}/packaging/collections_config.json"
+COLLECTIONS_ARGS=()
+if [ -f "$COLLECTIONS_CONFIG" ]; then
+    COLLECTIONS_ARGS=("--collections-config" "packaging/collections_config.json")
+    echo "🔐 Using Collections Config: ${COLLECTIONS_CONFIG}"
+fi
+
 for ORG_DIR in $ORGS_DIRS; do
     DOMAIN=$(basename "$ORG_DIR")
     # Extract Org number/name for MSP ID
@@ -58,6 +66,7 @@ for ORG_DIR in $ORGS_DIRS; do
         --package-id "${PACKAGE_ID}" \
         --sequence "${CC_SEQUENCE}" \
         "${POLICY_ARGS[@]}" \
+        "${COLLECTIONS_ARGS[@]}" \
         --tls \
         --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt \
         --waitForEvent

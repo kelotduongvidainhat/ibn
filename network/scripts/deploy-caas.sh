@@ -33,73 +33,55 @@ tar -czf "${PACKAGE_NAME}" metadata.json code.tar.gz
 cd - > /dev/null
 
 # 2. Install Chaincode
-echo "--- Installing package ${PACKAGE_NAME} on peer0.org1.example.com ---"
-docker exec cli peer lifecycle chaincode install "packaging/${PACKAGE_NAME}" > log.txt 2>&1 || true
-cat log.txt
+echo "--- Installing package ${PACKAGE_NAME} on all peers ---"
+ORGS_DIRS=$(ls -d "${NETWORK_DIR}/organizations/peerOrganizations/"* 2>/dev/null)
+for ORG_DIR in $ORGS_DIRS; do
+    DOMAIN=$(basename "$ORG_DIR")
+    ORG_NUM=$(echo $DOMAIN | grep -o '[0-9]\+' | head -n 1)
+    [ -z "$ORG_NUM" ] && continue
+    MSP_ID="Org${ORG_NUM}MSP"
+    
+    echo "   Installing for ${MSP_ID} (peer0.${DOMAIN})..."
+    docker exec \
+      -e CORE_PEER_ADDRESS="peer0.${DOMAIN}:7051" \
+      -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
+      -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp" \
+      -e CORE_PEER_TLS_ROOTCERT_FILE="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/peers/peer0.${DOMAIN}/tls/ca.crt" \
+      cli peer lifecycle chaincode install "packaging/${PACKAGE_NAME}" > install_log.txt 2>&1 || true
+    cat install_log.txt
+done
 
-# Extract Package ID from install or queryinstalled
-if grep -q "Chaincode code package identifier:" log.txt; then
-    PACKAGE_ID=$(grep "Chaincode code package identifier:" log.txt | awk '{print $NF}')
-else
-    echo "Chaincode likely already installed, querying Package ID..."
-    PACKAGE_ID=$(docker exec cli peer lifecycle chaincode queryinstalled | grep "Package ID: ${CC_NAME}_${CC_VERSION}:" | awk '{print $3}' | sed 's/,$//')
+# Extract Package ID directly from the last successful install log to ensure uniqueness
+# Fabric prints "Chaincode code package identifier: <ID>" upon success
+PACKAGE_ID=$(grep "Chaincode code package identifier:" install_log.txt | awk '{print $NF}' | head -n 1)
+
+# Fallback: If install was a "skip" because it already existed, query the latest for THIS version
+if [ -z "$PACKAGE_ID" ]; then
+    echo "🔍 Package already installed, querying Package ID for ${LABEL}..."
+    PACKAGE_ID=$(docker exec cli peer lifecycle chaincode queryinstalled | grep "Package ID: ${LABEL}:" | awk '{print $3}' | sed 's/,$//' | head -n 1)
 fi
 
 echo "Extracted Package ID: ${PACKAGE_ID}"
+echo "${PACKAGE_ID}" > "${PACKAGE_DIR}/package_id.txt"
 
 if [ -z "$PACKAGE_ID" ]; then
     echo "ERROR: Failed to extract Package ID"
     exit 1
 fi
 
-# 2. Approve Chaincode
-echo "--- Approving chaincode for Org1 ---"
-MAX_RETRIES=5
-RETRY_COUNT=0
-SUCCESS=false
-
-while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    set +e
-    docker exec cli peer lifecycle chaincode approveformyorg \
-      -o orderer.example.com:7050 \
-      --ordererTLSHostnameOverride orderer.example.com \
-      --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt \
-      --channelID "${CHANNEL_NAME}" \
-      --name "${CC_NAME}" \
-      --version "${CC_VERSION}" \
-      --package-id "${PACKAGE_ID}" \
-      --sequence "${CC_SEQUENCE}"
-    
-    if [ $? -eq 0 ]; then
-        SUCCESS=true
-        set -e
-        break
-    else
-        RETRY_COUNT=$((RETRY_COUNT+1))
-        echo "⚠️ Approval failed (attempt $RETRY_COUNT/$MAX_RETRIES). Waiting for Orderer Raft leader..."
-        sleep 5
-    fi
-    set -e
-done
-
-if [ "$SUCCESS" = false ]; then
-    echo "❌ ERROR: Failed to approve chaincode after $MAX_RETRIES attempts."
-    exit 1
+# Sync chaincode/.env for local development and Docker
+CC_ENV="${NETWORK_DIR}/../chaincode/.env"
+if [ -f "$CC_ENV" ]; then
+    sed -i "s/^CHAINCODE_ID=.*/CHAINCODE_ID=${PACKAGE_ID}/" "$CC_ENV"
+    echo "✅ Synchronized ${CC_ENV} with new Package ID"
 fi
 
-# 3. Check Commit Readiness
-echo "--- Checking commit readiness ---"
-docker exec cli peer lifecycle chaincode checkcommitreadiness \
-  --channelID "${CHANNEL_NAME}" \
-  --name "${CC_NAME}" \
-  --version "${CC_VERSION}" \
-  --sequence "${CC_SEQUENCE}" \
-  --output json
-
-# 4. Commit Chaincode
-"${NETWORK_DIR}/scripts/mass-commit.sh" "${CC_NAME}" "${CC_VERSION}" "${CC_SEQUENCE}" "${CHANNEL_NAME}"
+# 3. Approve and Commit across all Orgs
+echo "--- Approving and Committing across all organizations ---"
+SCRIPTS_DIR="${NETWORK_DIR}/scripts"
+"${SCRIPTS_DIR}/mass-approve.sh" "${CC_NAME}" "${CC_VERSION}" "${CC_SEQUENCE}" "${CHANNEL_NAME}"
+"${SCRIPTS_DIR}/mass-commit.sh" "${CC_NAME}" "${CC_VERSION}" "${CC_SEQUENCE}" "${CHANNEL_NAME}"
 
 # 5. Final Report
 echo "--- Chaincode Deployment Complete ---"
-echo "${PACKAGE_ID}" > "${PACKAGE_DIR}/package_id.txt"
 echo "Next step: Start the chaincode-basic container with PACKAGE_ID=${PACKAGE_ID}"

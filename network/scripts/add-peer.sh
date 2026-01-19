@@ -236,24 +236,5 @@ if [ ! -z "$CHANNEL_NAME" ]; then
       cli peer channel join -b "${BLOCK_PATH}" || echo "⚠️  Join failed (Already joined?)"
 fi
 
-# --- 5. INSTALL CHAINCODE ---
-CC_PACKAGE="${NETWORK_DIR}/packaging/basic.tar.gz"
-if [ -f "$CC_PACKAGE" ]; then
-    echo "Using Chaincode Package: ${CC_PACKAGE}"
-    
-    # Wait for peer to be ready
-    echo "⏳ Waiting 10s for peer startup before installing chaincode..."
-    sleep 10
-
-    echo "📦 Installing Chaincode on ${PEER_NAME}..."
-    docker exec \
-      -e CORE_PEER_ADDRESS="${PEER_NAME}:7051" \
-      -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
-      -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp" \
-      -e CORE_PEER_TLS_ROOTCERT_FILE="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/peers/${PEER_NAME}/tls/ca.crt" \
-      cli peer lifecycle chaincode install /opt/gopath/src/github.com/hyperledger/fabric/peer/packaging/basic.tar.gz || echo "⚠️ Chaincode install failed (Already installed?)"
-else
-    echo "⚠️ Chaincode package not found at ${CC_PACKAGE}. Skipping install."
-fi
-
-echo "✅ Peer ${PEER_NAME} provisioning complete!"
+# --- 5. PROVISIONING COMPLETE ---
+echo "✅ Peer ${PEER_NAME} infrastructure is ready."

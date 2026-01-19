@@ -50,6 +50,12 @@ To scale to multiple applications (Tea-Tracking, Ownership, etc.), the following
 *   **Platform Role**: Provides the capability to grow the cluster horizontally to maintain an odd-numbered "Safe Quorum."
 *   **Strategic Goal**: Zero-downtime cluster expansion where new orderers join the Raft group dynamically via the `osnadmin` participation API.
 
+### 8. Granular Data Privacy (PDC)
+*   **The Component**: Private Data Collections (Collections Config).
+*   **Decoupling**: Separate sensitive data (Appraised Value) from public blockchain records.
+*   **Platform Role**: Provides cryptographic isolation for sensitive field-level data.
+*   **Strategic Goal**: Allow unauthorized organizations to see the "Existence" of an asset while keeping sensitive attributes readable only by a subset of members.
+
 ---
 
 ## 🗺️ Conceptual Layers

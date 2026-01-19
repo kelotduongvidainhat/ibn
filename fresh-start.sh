@@ -71,20 +71,21 @@ echo -e "\n${BOLD}Step 2: Initial Bootstrap (Org1 + Orderer)${NC}"
 echo "⏳ Waiting for Orderer Raft leadership (5s)..."
 sleep 5
 
-# 3. Initial Chaincode Deployment (Required to generate package_id.txt)
-echo -e "\n${BOLD}Step 3: Initial Chaincode Deployment for Org1${NC}"
-./network/scripts/deploy-caas.sh
-
-# 4. Sequential Scaling (Orgs 2 through 3)
-echo -e "\n${BOLD}Step 4: Sequential Scaling (Orgs 2 through 3)${NC}"
+# 3. Sequential Scaling (Orgs 2 through 3)
+echo -e "\n${BOLD}Step 3: Sequential Scaling (Orgs 2 through 3)${NC}"
 for i in {2..3}; do
-    echo -e "\n${BOLD}${CYAN}Step 4.$((i-1)): Provisioning next Organization...${NC}"
+    echo -e "\n${BOLD}${CYAN}Step 3.$((i-1)): Provisioning next Organization...${NC}"
     "${SCRIPTS_DIR}/add-org.sh"
 done
 
+# 4. Global Chaincode Deployment (Required to generate package_id.txt)
+echo -e "\n${BOLD}Step 4: Global Chaincode Deployment${NC}"
+./network/scripts/deploy-caas.sh
+
 # 5. Starting Application Services
 echo -e "\n${BOLD}Step 5: Launching CaaS and Backend API${NC}"
-docker compose -f network/compose/docker-compose-base.yaml -f network/compose/docker-compose-org1.yaml up -d chaincode-basic backend
+export CHAINCODE_ID=$(cat "${PROJECT_ROOT}/network/packaging/package_id.txt")
+docker compose -f network/compose/docker-compose-base.yaml -f network/compose/docker-compose-org1.yaml up -d --build chaincode-basic backend
 
 # 6. Final Synchronization Check
 echo -e "\n${BOLD}Step 6: Verifying Network Health${NC}"

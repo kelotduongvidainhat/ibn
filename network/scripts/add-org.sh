@@ -351,11 +351,12 @@ if [ "$SYNCED" = false ]; then
 fi
 
 # 6. Chaincode Lifecycle
-echo "📦 Finalizing Chaincode Lifecycle for ${ORG_NAME}..."
-PACKAGE_ID=$(cat "${NETWORK_DIR}/packaging/package_id.txt")
+if [ -f "${NETWORK_DIR}/packaging/package_id.txt" ]; then
+    echo "📦 Finalizing Chaincode Lifecycle for ${ORG_NAME}..."
+    PACKAGE_ID=$(cat "${NETWORK_DIR}/packaging/package_id.txt")
 
-# Chaincode is already installed by add-peer.sh
-# We proceed directly to approval.
+    # Chaincode is already installed by add-peer.sh
+    # We proceed directly to approval.
 
     MAX_RETRIES=5
     RETRY_COUNT=0
@@ -384,6 +385,9 @@ PACKAGE_ID=$(cat "${NETWORK_DIR}/packaging/package_id.txt")
         set -e
     done
     if [ "$SUCCESS" = false ]; then echo "❌ ERROR: Failed to approve chaincode."; exit 1; fi
+else
+    echo "ℹ️  Skipping Chaincode Lifecycle: package_id.txt not found. Global deploy script will handle this."
+fi
 
 # 7. Sync Anchor Peers
 echo "⚓ Synchronizing Anchor Peers for cross-org discovery..."

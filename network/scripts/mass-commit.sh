@@ -38,8 +38,13 @@ for ORG_DIR in $ORGS_DIRS; do
     echo "📍 Including Endorser: ${PEER_NAME}"
 done
 
-echo "--------------------------------------------------------------------------------"
-echo "🗳️  Submitting Commit Transaction..."
+# Check for collections config
+COLLECTIONS_CONFIG="${NETWORK_DIR}/packaging/collections_config.json"
+COLLECTIONS_ARGS=()
+if [ -f "$COLLECTIONS_CONFIG" ]; then
+    COLLECTIONS_ARGS=("--collections-config" "packaging/collections_config.json")
+    echo "🔐 Including Collections Config in commit"
+fi
 
 # 2. Execute the commit via CLI
 docker exec \
@@ -52,6 +57,7 @@ docker exec \
     --version "${CC_VERSION}" \
     --sequence "${CC_SEQUENCE}" \
     "${POLICY_ARGS[@]}" \
+    "${COLLECTIONS_ARGS[@]}" \
     ${PEER_ARGS}
 
 if [ $? -eq 0 ]; then

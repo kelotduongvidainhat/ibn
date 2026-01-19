@@ -14,6 +14,12 @@ export COMPOSE_IGNORE_ORPHANS=True
 
 echo "🛑 [STOP] Bringing down the Fabric network..."
 
+# 0. AGGRESSIVE PRE-CLEANUP
+# Kill any container with the project prefix to ensure volumes are released
+echo "💀 Killing all project-related containers..."
+docker ps -aq --filter name="^${COMPOSE_PROJECT_NAME}_" | xargs -r docker stop | xargs -r docker rm || true
+docker ps -aq --filter name="^ibn_" | xargs -r docker stop | xargs -r docker rm || true
+
 # 1. DISCOVERY & STOP
 # Find all modular compose files to ensure thorough cleanup
 COMPOSE_FILES="-f ${COMPOSE_DIR}/docker-compose-base.yaml"
@@ -32,6 +38,9 @@ fi
 
 echo "🐳 Stopping containers and removing volumes..."
 docker compose ${COMPOSE_FILES} down --volumes --remove-orphans || true
+# Ensure core containers are gone to prevent name conflicts
+docker stop chaincode-basic backend 2>/dev/null || true
+docker rm chaincode-basic backend 2>/dev/null || true
 
 # 2. CLEANUP PHYSICAL ARTIFACTS
 # We use a Docker helper to bypass permission issues with root-owned cert folders
@@ -39,12 +48,14 @@ echo "🧹 Cleaning up identity certs and channel artifacts..."
 docker run --rm -v "${NETWORK_DIR}:/network" alpine sh -c "rm -rf /network/organizations/* /network/channel-artifacts/*"
 
 # 3. CLEANUP OTHER METADATA
+rm -f "${NETWORK_DIR}/packaging/"*.tar.gz
 rm -f "${NETWORK_DIR}/packaging/package_id.txt"
 rm -f "${NETWORK_DIR}/scripts/log.txt"
 
 # 4. DEEP PRUNE
 # This is the "Magic Bullet" that removes ghost volumes from previous sessions
 echo "🧹 Final pruning of unused resources..."
+docker rmi basic-cc-image 2>/dev/null || true
 docker network prune -f
 docker volume prune -f
 # Aggressive cleanup of project volumes
