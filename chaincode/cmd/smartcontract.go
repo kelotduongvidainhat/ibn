@@ -21,6 +21,8 @@ type Asset struct {
 	Owner                  string `json:"Owner"`                  // Current owner of the asset
 	AppraisedValue         int    `json:"AppraisedValue"`         // Market value of the asset (Private)
 	IsPrivateDataAvailable bool   `json:"IsPrivateDataAvailable"` // Flag indicating if private data was retrieved
+	FileCID                string `json:"FileCID"`                // IPFS Content Identifier
+	FileName               string `json:"FileName"`               // Original name of the uploaded file
 }
 
 const collectionName = "assetCollection"
@@ -39,10 +41,12 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 	for _, asset := range assets {
 		// Public data
 		assetPublic := Asset{
-			ID:    asset.ID,
-			Color: asset.Color,
-			Size:  asset.Size,
-			Owner: asset.Owner,
+			ID:       asset.ID,
+			Color:    asset.Color,
+			Size:     asset.Size,
+			Owner:    asset.Owner,
+			FileCID:  "",
+			FileName: "",
 		}
 		assetJSON, err := json.Marshal(assetPublic)
 		if err != nil {
@@ -65,7 +69,7 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 }
 
 // CreateAsset issues a new asset to the world state
-func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface, id string, color string, size int, owner string) error {
+func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface, id string, color string, size int, owner string, fileCID string, fileName string) error {
 	fmt.Printf("DEBUG: CreateAsset called for ID: %s, Color: %s, Size: %d, Owner: %s\n", id, color, size, owner)
 	
 	// Check if asset already exists
@@ -90,10 +94,12 @@ func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface,
 
 	// Create the asset object for public storage
 	asset := Asset{
-		ID:    id,
-		Color: color,
-		Size:  size,
-		Owner: owner,
+		ID:       id,
+		Color:    color,
+		Size:     size,
+		Owner:    owner,
+		FileCID:  fileCID,
+		FileName: fileName,
 	}
 	
 	assetJSON, err := json.Marshal(asset)

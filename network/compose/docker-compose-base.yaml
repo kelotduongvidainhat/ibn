@@ -118,6 +118,16 @@ services:
     networks:
     - test
 
+  ipfs:
+    container_name: ipfs
+    image: ipfs/kubo:latest
+    ports:
+      - "4001:4001"
+      - "5001:5001"
+      - "8081:8080"
+    networks:
+      - test
+
   backend:
     container_name: backend
     build:
@@ -133,6 +143,7 @@ services:
     - CERT_PATH=/network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/signcerts/Admin@org1.example.com-cert.pem
     - KEY_PATH=/network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore/priv_sk
     - TLS_CERT_PATH=/network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+    - IPFS_API_URL=http://ipfs:5001
     ports:
     - 8080:8080
     volumes:

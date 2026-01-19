@@ -8,11 +8,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hyperledger/fabric-gateway/pkg/client"
+	"github.com/ibn/backend/internal/ipfs"
 	"github.com/ibn/backend/internal/models"
 )
 
 type AssetHandler struct {
 	Gateway *client.Gateway
+	IPFS    *ipfs.Client
 }
 
 // getContract dynamically resolves the contract based on URL parameters
@@ -32,22 +34,55 @@ func (h *AssetHandler) getContract(c *gin.Context) *client.Contract {
 }
 
 func (h *AssetHandler) CreateAsset(c *gin.Context) {
-	var asset models.Asset
-	if err := c.ShouldBindJSON(&asset); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	// Support both JSON and MultipartForm
+	var id, color, size, owner, appraisedValue string
+	var fileCID, fileName string
+
+	if contentType := c.GetHeader("Content-Type"); contentType == "application/json" {
+		var asset models.Asset
+		if err := c.ShouldBindJSON(&asset); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		id = asset.ID
+		color = asset.Color
+		size = fmt.Sprintf("%d", asset.Size)
+		owner = asset.Owner
+		appraisedValue = fmt.Sprintf("%d", asset.AppraisedValue)
+	} else {
+		id = c.PostForm("ID")
+		color = c.PostForm("Color")
+		size = c.PostForm("Size")
+		owner = c.PostForm("Owner")
+		appraisedValue = c.PostForm("AppraisedValue")
+
+		// Handle File Upload
+		file, header, err := c.Request.FormFile("file")
+		if err == nil {
+			defer file.Close()
+			fileName = header.Filename
+			// Upload to IPFS
+			cid, err := h.IPFS.AddFile(fileName, file)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload to IPFS: " + err.Error()})
+				return
+			}
+			fileCID = cid
+		}
 	}
 
 	contract := h.getContract(c)
 	_, err := contract.Submit("CreateAsset",
 		client.WithArguments(
-			asset.ID,
-			asset.Color,
-			fmt.Sprintf("%d", asset.Size),
-			asset.Owner,
+			id,
+			color,
+			size,
+			owner,
+			fileCID,
+			fileName,
 		),
 		client.WithTransient(map[string][]byte{
-			"appraisedValue": []byte(fmt.Sprintf("%d", asset.AppraisedValue)),
+			"appraisedValue": []byte(appraisedValue),
 		}),
 	)
 
@@ -56,7 +91,12 @@ func (h *AssetHandler) CreateAsset(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, asset)
+	c.JSON(http.StatusCreated, gin.H{
+		"ID":       id,
+		"FileCID":  fileCID,
+		"FileName": fileName,
+		"Status":   "Created",
+	})
 }
 
 func (h *AssetHandler) ReadAsset(c *gin.Context) {

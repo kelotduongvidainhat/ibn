@@ -27,10 +27,10 @@ This document outlines the strategic progression of the IBN (Integrated Blockcha
 ---
 
 ## 🖼️ Phase 8: Decentralized Storage (IPFS)
-*   **[ ] IPFS Node Integration**: Deploy a sidecar IPFS node for the consortium.
-*   **[ ] Off-Chain Storage**: Modify Smart Contract to store IPFS Content Identifiers (CIDs) instead of raw image data.
-*   **[ ] Client-Side Resolution**: Backend API and Frontend integration for CID-to-Image rendering.
-*   **[ ] Data Persistence**: Implement IPFS pinning strategies for critical asset artifacts.
+*   **[x] IPFS Node Integration**: Deploy a sidecar IPFS node for the consortium.
+*   **[x] Off-Chain Storage**: Modify Smart Contract to store IPFS Content Identifiers (CIDs) instead of raw image data.
+*   **[x] Client-Side Resolution**: Backend API integration for CID-to-Image/File resolution.
+*   **[x] Data Persistence**: Implement IPFS pinning strategies for critical asset artifacts.
 
 ---
 

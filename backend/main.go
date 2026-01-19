@@ -10,6 +10,7 @@ import (
 	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"github.com/ibn/backend/internal/fabric"
 	"github.com/ibn/backend/internal/handlers"
+	"github.com/ibn/backend/internal/ipfs"
 	"github.com/joho/godotenv"
 )
 
@@ -59,7 +60,8 @@ func main() {
 	r.Use(cors.Default())
 
 	// 6. Routes
-	assetHandler := &handlers.AssetHandler{Gateway: gateway}
+	ipfsClient := ipfs.NewClient()
+	assetHandler := &handlers.AssetHandler{Gateway: gateway, IPFS: ipfsClient}
 	adminHandler := handlers.NewAdminHandler()
 
 	api := r.Group("/api")

@@ -8,4 +8,6 @@ type Asset struct {
 	Owner                  string `json:"Owner"`
 	AppraisedValue         int    `json:"AppraisedValue"`
 	IsPrivateDataAvailable bool   `json:"IsPrivateDataAvailable"`
+	FileCID                string `json:"FileCID"`
+	FileName               string `json:"FileName"`
 }
