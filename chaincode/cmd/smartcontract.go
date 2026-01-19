@@ -15,11 +15,12 @@ type SmartContract struct {
 
 // Asset describes the basic properties of a digital asset
 type Asset struct {
-	ID             string `json:"ID"`             // Unique identifier for the asset
-	Color          string `json:"Color"`          // Asset color property
-	Size           int    `json:"Size"`           // Asset size property
-	Owner          string `json:"Owner"`          // Current owner of the asset
-	AppraisedValue int    `json:"AppraisedValue"` // Market value of the asset (Private)
+	ID                     string `json:"ID"`                     // Unique identifier for the asset
+	Color                  string `json:"Color"`                  // Asset color property
+	Size                   int    `json:"Size"`                   // Asset size property
+	Owner                  string `json:"Owner"`                  // Current owner of the asset
+	AppraisedValue         int    `json:"AppraisedValue"`         // Market value of the asset (Private)
+	IsPrivateDataAvailable bool   `json:"IsPrivateDataAvailable"` // Flag indicating if private data was retrieved
 }
 
 const collectionName = "assetCollection"
@@ -136,6 +137,7 @@ func (s *SmartContract) ReadAsset(ctx contractapi.TransactionContextInterface, i
 		_, err = fmt.Sscanf(string(privateData), "%d", &appraisedValue)
 		if err == nil {
 			asset.AppraisedValue = appraisedValue
+			asset.IsPrivateDataAvailable = true
 		}
 	}
 
@@ -203,6 +205,7 @@ func (s *SmartContract) constructQueryResponseFromIterator(ctx contractapi.Trans
 			_, err = fmt.Sscanf(string(privateData), "%d", &appraisedValue)
 			if err == nil {
 				asset.AppraisedValue = appraisedValue
+				asset.IsPrivateDataAvailable = true
 			}
 		}
 

@@ -5,7 +5,6 @@ bin/
 network/organizations/
 network/channel-artifacts/
 network/packaging/*.tar.gz
-network/packaging/package_id.txt
 
 # Go
 chaincode/chaincode

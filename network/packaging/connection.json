@@ -1,5 +1,1 @@
-{
-  "address": "chaincode-basic:9999",
-  "dial_timeout": "10s",
-  "tls_required": false
-}
+{"address":"chaincode-basic:9999","dial_timeout":"10s","tls_required":false}
