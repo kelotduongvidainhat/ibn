@@ -71,8 +71,16 @@ The network management toolkit is exposed via REST API for remote integration:
 
 ---
 
-## 📂 Project Logs & Audit Trail
-Platform execution history is centrally managed in `docs/logs/`:
+## 📂 Project Documentation & Audit
+Comprehensive documentation and execution history are centrally managed in the `docs/` directory:
+
+### 1. Platform Documentation
+- **[ROADMAP.md](docs/ROADMAP.md)**: The strategic vision and phase-by-phase development tracker.
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Detailed technical breakdown of the multi-channel, multi-org infrastructure.
+- **[QUICKSTART.md](docs/QUICKSTART.md)**: Step-by-step guide for developers to get the environment running.
+- **[LOG.md](docs/LOG.md)**: Historical session summaries and key decision logs.
+
+### 2. Audit Trail & Logs (`docs/logs/`)
 - **`org_lifecycle.log`**: Unified audit trail for all governance events (Freeze, Remove, Add).
 - **`org_index.history`**: Monotonic index tracker for organization IDs.
 - **`retired_orgs.list`**: Registry of permanently removed organization IDs.
