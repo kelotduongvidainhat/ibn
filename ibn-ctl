@@ -53,6 +53,8 @@ function usage() {
     echo "  deploy      Lifecycle: Approve and Commit chaincode (Batch)"
     echo "  profiles    Generate Connection Profiles for all orgs"
     echo "  onboard     Register/Enroll a new client user"
+    echo "  snap        Take a resource snapshot (baseline)"
+    echo "  diff        Compare current resources with snapshot (delta)"
     echo "  fresh       Fresh Start: Reset and build network from scratch"
     echo "  down        Stop and wipe the entire network"
     echo "  -i          Enter Interactive Menu mode (default)"
@@ -81,7 +83,9 @@ function interactive_menu() {
         echo "16) 📦 Atomic Upgrade       Increment version & rollout"
         echo "17) 🧐 Audit Channel       Inspect Governance & Anchors"
         echo "18) 📋 Org Logs            Stream logs by Organization"
-        echo "19) 🚪 Exit"
+        echo "19) 📸 Take Snapshot       Save current baseline"
+        echo "20) ⚖️  Resource Audit     Compare delta vs baseline"
+        echo "21) 🚪 Exit"
         echo ""
         read -p "Select an option: " opt
 
@@ -169,7 +173,9 @@ function interactive_menu() {
                 read -p "Enter Org Num: " lnum
                 "${SCRIPTS_DIR}/org-logs.sh" "$lnum"
                 ;;
-            19|exit|quit) exit 0 ;;
+            19) "${SCRIPTS_DIR}/network-audit.sh" checkpoint ;;
+            20) "${SCRIPTS_DIR}/network-audit.sh" diff ;;
+            21|exit|quit) exit 0 ;;
             *) echo -e "${RED}Invalid option${NC}" ;;
         esac
         echo -e "\n${YELLOW}Press Enter to return to menu...${NC}"
@@ -199,6 +205,8 @@ else
         chan)       "${SCRIPTS_DIR}/create-channel.sh" "$2" ;;
         upgrade)    "${SCRIPTS_DIR}/upgrade-cc.sh" "$2" "$3" "$4" ;;
         audit)      "${SCRIPTS_DIR}/audit-channel.sh" "$2" ;;
+        diff)       "${SCRIPTS_DIR}/network-audit.sh" diff ;;
+        snap)       "${SCRIPTS_DIR}/network-audit.sh" checkpoint ;;
         logs)       "${SCRIPTS_DIR}/org-logs.sh" "$2" ;;
         help)       usage ;;
         *)          echo -e "${RED}Unknown command: $1${NC}"; usage; exit 1 ;;

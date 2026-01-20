@@ -147,6 +147,10 @@ This document logs the manual steps taken to add a new organization (Org2) to th
     - Restricted `InitLedger` to `admin`.
     - Restricted `CreateAsset` to `admin` or `manager`.
 3.  **Security Verification**: Created `test-abac.sh` to prove that a user with the `viewer` role is rejected by the peer when attempting to mutate state.
+4.  **Resource Delta Profiling**:
+    - Developed `network-audit.sh` to capture "before/after" snapshots of RAM, Disk, and Container counts.
+    - Integrated with `ibn-ctl` via `snap` and `diff` commands.
+    - Verified that adding a single Peer+CouchDB consumes ~123MB of RAM and 1 extra Data Volume.
 
 ---
-**Current Status**: Platform supports Multi-Channeling, Decentralized Heavy-Storage (IPFS), and Attribute-Based Security. Phase 9 (Part 1) Complete.
+**Current Status**: Platform supports Multi-Channeling, Decentralized Heavy-Storage (IPFS), Attribute-Based Security, and Resource Cost Auditing. Phase 9 Progress: 75%.
