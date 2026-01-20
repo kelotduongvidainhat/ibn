@@ -56,6 +56,12 @@ To scale to multiple applications (Tea-Tracking, Ownership, etc.), the following
 *   **Platform Role**: Provides cryptographic isolation for sensitive field-level data.
 *   **Strategic Goal**: Allow unauthorized organizations to see the "Existence" of an asset while keeping sensitive attributes readable only by a subset of members.
 
+### 9. Functional Role Security (ABAC)
+*   **The Component**: X.509 Certificate Attributes & CID Library.
+*   **Decoupling**: Authorization is based on the user's role (Admin, Manager, Viewer), not just their Organization.
+*   **Platform Role**: Provides "Bank-Grade" access control within the smart contract.
+*   **Strategic Goal**: Prevent horizontal privilege escalation by ensuring only users with specific "Functional Entitlements" can trigger critical ledger mutations.
+
 ---
 
 ## 🗺️ Conceptual Layers

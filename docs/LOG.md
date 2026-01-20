@@ -120,4 +120,33 @@ This document logs the manual steps taken to add a new organization (Org2) to th
     - **Peer Factory Update**: Hardened `add-peer.sh` to automatically calculate unique CouchDB ports and link them to new peers.
 
 ---
-**Final Status**: Network migrated to CouchDB. Rich Queries enabled and verified via Backend API. Automation toolkit updated for database orchestration.
+## Phase 7: Multi-Channel Orchestration & ICC
+
+1.  **Isolated Channels**: Implemented `create-channel.sh` with profile support (`DefaultChannel`, `TwoOrgChannel`).
+2.  **Multi-Tenant Backend**: Refactored the Go API to support parameterized routes (`/api/:channel/:ccname/...`), allowing a single backend to serve multiple isolated ledgers.
+3.  **Inter-Channel Communication (ICC)**: 
+    - Added `ReadAssetFromChannel` to the smart contract using the `InvokeChaincode` API.
+    - Verified that Org1 can securely bridge from `mychannel` to `channel2` to verify asset state.
+4.  **Security Boundaries**: Proved that Org3 (not a member of `channel2`) is physically blocked from cross-channel queries.
+
+---
+## Phase 8: Decentralized Storage (IPFS)
+
+1.  **Consortium Sidecar**: Integrated an **IPFS (Kubo)** node as a shared infrastructure component.
+2.  **Hybrid Ledger Model**: 
+    - Extended the `Asset` struct to include `FileCID` and `FileName`.
+    - Assets on-chain now store Content Identifiers (CIDs) pointing to off-chain data.
+3.  **Automated Uploads**: Developed a Go-based IPFS client in the backend to handle `multipart/form-data` uploads, generating CIDs and committing them to the ledger in a single atomic transaction.
+
+---
+## Phase 9: Enterprise Security (ABAC)
+
+1.  **Attribute Injection**: Updated `enroll-identities.sh` to register users with functional roles (`admin`, `manager`, `viewer`) inside the X.509 ECerts.
+2.  **Smart Contract Guards**:
+    - Implemented `hasRole` helper in the chaincode using the `cid` (Client Identity) library.
+    - Restricted `InitLedger` to `admin`.
+    - Restricted `CreateAsset` to `admin` or `manager`.
+3.  **Security Verification**: Created `test-abac.sh` to prove that a user with the `viewer` role is rejected by the peer when attempting to mutate state.
+
+---
+**Current Status**: Platform supports Multi-Channeling, Decentralized Heavy-Storage (IPFS), and Attribute-Based Security. Phase 9 (Part 1) Complete.
