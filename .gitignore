@@ -1,5 +1,5 @@
 # Binaries
-bin/
+!bin/
 
 # Generated Fabric artifacts
 network/organizations/
@@ -26,3 +26,7 @@ network/compose/docker-compose-orderers.yaml
 # Connection Profiles
 network/connection-profiles/
 backend/connection.json
+
+# Tooling artifacts
+config/
+install_log.txt
