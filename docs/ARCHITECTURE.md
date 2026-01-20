@@ -110,6 +110,7 @@ The platform maintains a central repository for all lifecycle events in `docs/lo
 | **`CouchDB`** | **Platform** | Required by peers regardless of data type. |
 | **`TLS Certs`** | **Platform** | Independent of the transaction contents. |
 | **`Rich Query API`** | **Platform** | Generic interface to access the database. |
+| **`Block Visualizer API`** | **Platform** | Direct peer auditing via QSCC system chaincode. |
 
 ---
 

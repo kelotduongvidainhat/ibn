@@ -171,3 +171,17 @@ This document logs the manual steps taken to add a new organization (Org2) to th
 5.  **Health Verification**:
     - Confirmed all 12 containers (CAs, Peers, Orderer, CouchDBs, Backend) are stable.
     - Verified ledger synchronization across all 3 orgs at block height 9.
+
+---
+## Phase 11: Blockchain Observability (Block Visualizer)
+
+1.  **Backend Extension**:
+    - Created `BlockHandler` in the Go backend.
+    - Integrated with `QSCC` (Query System Chaincode) to access ledger metadata.
+    - Added routes for `GetChainInfo` (current height/hashes) and `GetBlockByNumber`.
+2.  **Real-time Auditing**:
+    - Verified block height tracking (Height: 9).
+    - Verified architectural decoding of genesis (Block 0) and transaction blocks.
+3.  **Deployment**:
+    - Rebuilt the backend Docker container to pick up new observability endpoints.
+    - Updated `ARCHITECTURE.md` and `ROADMAP.md`.

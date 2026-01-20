@@ -63,6 +63,7 @@ func main() {
 	ipfsClient := ipfs.NewClient()
 	assetHandler := &handlers.AssetHandler{Gateway: gateway, IPFS: ipfsClient}
 	adminHandler := handlers.NewAdminHandler()
+	blockHandler := &handlers.BlockHandler{Gateway: gateway}
 
 	api := r.Group("/api")
 	{
@@ -78,6 +79,11 @@ func main() {
 		api.GET("/assets/query", assetHandler.QueryAssets)
 		api.POST("/assets", assetHandler.CreateAsset)
 		api.GET("/assets/:id", assetHandler.ReadAsset)
+
+		// Blockchain Observability
+		api.GET("/:channel/blocks/info", blockHandler.GetChainInfo)
+		api.GET("/:channel/blocks/history/:number", blockHandler.GetBlockByNumber)
+		api.GET("/blocks/info", blockHandler.GetChainInfo)
 	}
 
 	admin := r.Group("/api/admin")
