@@ -11,6 +11,23 @@ For the easiest experience, use the **ibn-ctl** toolkit to manage the whole life
 
 The toolkit provides "one-button" operations for scaling (Adding/Removing Orgs, Peers, and Orderers), monitoring, and chaincode lifecycle.
 
+## 🛠️ Prerequisites & Environment Setup (Fresh WSL/Ubuntu)
+
+If you are running on a fresh WSL instance or Ubuntu machine, ensure you have the necessary system tools and Fabric binaries. You can run this one-liner to prepare everything:
+
+```bash
+# 1. Install System Tools (jq, bc, yaml)
+sudo apt update && sudo apt install -y jq bc python3-yaml
+
+# 2. Fix Docker Desktop Credential Error (WSL specific)
+echo "{}" > ~/.docker/config.json
+
+# 3. Download Fabric Binaries (v2.5.11)
+curl -sSL https://bit.ly/2VmsX9f | bash -s -- 2.5.11 1.5.14 -d -s
+```
+
+*Note: The Fabric binaries will be placed in the `./bin` and `./config` directories of your project.*
+
 ## 1️⃣ Infrastructure Setup
 Bootstrap the network using Fabric Certificate Authorities:
 ```bash
