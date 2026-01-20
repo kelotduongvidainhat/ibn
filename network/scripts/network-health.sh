@@ -12,13 +12,23 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 BOLD='\033[1m'
 
+# 0. Consortium Summary
+NUM_ORGS=$(ls -d ${NETWORK_DIR}/organizations/peerOrganizations/* 2>/dev/null | wc -l)
+NUM_PEERS=$(docker ps --format "{{.Names}}" | grep -E "^peer|^[0-9]\.org" | wc -l)
+NUM_COUCH=$(docker ps --format "{{.Names}}" | grep -i "couchdb" | wc -l)
+NUM_CHANNELS=$(docker exec cli peer channel list 2>/dev/null | grep -v 'Channels' | wc -l)
+
+echo -e "${BOLD}🏛️  Consortium Summary${NC}"
+echo -e "Organizations: ${NUM_ORGS} | Peers: ${NUM_PEERS} | Databases: ${NUM_COUCH} | Active Channels: ${NUM_CHANNELS}"
+echo "--------------------------------------------------------------------------------"
+
 echo -e "${BOLD}🔍 Scanning Network Health for Channel: ${CHANNEL_NAME}${NC}"
 echo "--------------------------------------------------------------------------------"
 printf "%-30s | %-10s | %-15s | %-10s\n" "PEER" "STATUS" "HEIGHT" "SYNC"
 echo "--------------------------------------------------------------------------------"
 
 # 1. Discover all active peer containers
-PEERS=$(docker ps --format "{{.Names}}" | grep "^peer" | grep example.com | sort)
+PEERS=$(docker ps --format "{{.Names}}" | grep -E "^peer|^[0-9]\.org" | sort)
 
 if [ -z "$PEERS" ]; then
     echo -e "${RED}❌ No peer containers found. Is the network running?${NC}"
