@@ -24,6 +24,16 @@ BOLD='\033[1m'
 echo -e "${BOLD}🚀 Starting Mass Commit for Chaincode: ${CC_NAME} (v${CC_VERSION}, seq ${CC_SEQUENCE})${NC}"
 echo "--------------------------------------------------------------------------------"
 
+# --- VERIFIED mTLS PARAMETERS FOR CLI ---
+# These variables ensure the CLI presents its identity to mTLS-enabled peers.
+export CLI_MTLS_ARGS="-e CORE_PEER_TLS_ENABLED=true \
+  -e CORE_PEER_TLS_CLIENTAUTHREQUIRED=true \
+  -e CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt \
+  -e CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt \
+  -e CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key \
+  -e CORE_PEER_TLS_CLIENTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt \
+  -e CORE_PEER_TLS_CLIENTKEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key"
+
 # 1. Discover all organizations and build the peer address string
 PEER_ARGS=""
 ORGS_DIRS=$(ls -d "${NETWORK_DIR}/organizations/peerOrganizations/"* 2>/dev/null)
@@ -40,6 +50,7 @@ for ORG_DIR in $ORGS_DIRS; do
         
         # Verify if peer is joined to the channel before including in commit
         IS_JOINED=$(docker exec \
+          ${CLI_MTLS_ARGS} \
           -e CORE_PEER_ADDRESS="${PEER_NAME}:7051" \
           -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
           -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp" \
@@ -67,6 +78,7 @@ fi
 
 # 2. Execute the commit via CLI
 docker exec \
+  ${CLI_MTLS_ARGS} \
   -e CORE_PEER_LOCALMSPID="Org1MSP" \
   -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp" \
   cli peer lifecycle chaincode commit \
@@ -77,7 +89,9 @@ docker exec \
     --sequence "${CC_SEQUENCE}" \
     "${POLICY_ARGS[@]}" \
     "${COLLECTIONS_ARGS[@]}" \
-    ${PEER_ARGS}
+    ${PEER_ARGS} \
+    --clientauth --certfile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt \
+    --keyfile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ SUCCESS: Chaincode '${CC_NAME}' is now committed to ${CHANNEL_NAME}.${NC}"
@@ -88,4 +102,4 @@ fi
 
 echo "--------------------------------------------------------------------------------"
 echo -e "${BOLD}🔍 Verifying Committed Status...${NC}"
-docker exec cli peer lifecycle chaincode querycommitted --channelID "${CHANNEL_NAME}" --name "${CC_NAME}"
+docker exec ${CLI_MTLS_ARGS} cli peer lifecycle chaincode querycommitted --channelID "${CHANNEL_NAME}" --name "${CC_NAME}"

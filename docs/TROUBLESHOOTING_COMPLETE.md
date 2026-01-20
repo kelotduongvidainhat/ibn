@@ -19,6 +19,7 @@ This guide consolidates all known issues, error messages, and solutions for depl
     *   [Version Compatibility](#33-version-compatibility--timeouts)
     *   [CA Configuration Mismatch](#34-ca-issues)
     *   [Gossip & Discovery (Anchor Peers)](#35-discovery-failures)
+    *   [Mutual TLS (mTLS) Hardening](#36-mtls-hardening)
 
 ---
 
@@ -238,6 +239,29 @@ Update Anchor Peers for both organizations:
 3.  Submit config update.
    *(Use `scripts/update-anchor-peers.sh`)*
 
+### 3.6 Mutual TLS (mTLS) Hardening
+
+**Error Log (Peer Container):**
+```text
+[core.comm] ServerHandshake -> Server TLS handshake failed with error tls: client didn't provide a certificate server=PeerServer
+```
+
+**Error Log (CLI / Orderer Container):**
+```text
+Error: error getting endorser client for channel: endorser client failed to connect to peer0.org1.example.com:7051: failed to create new connection: context deadline exceeded
+```
+
+**Cause (The "Identity Blind Spot"):**
+1.  **Binary Coupling**: In certain Fabric versions (v2.5.x), the `peer` binary acts as a "Passive Client" by default. Even if you provide `clientCert` and `clientKey` paths in `core.yaml`, it will **not** load or present them unless the global server flag `peer.tls.clientAuthRequired` is set to `true` in its own configuration.
+2.  **Orderer Enforcement**: When mTLS is enabled on the Orderer, standard `--tls` flags are insufficient. The client must explicitly provide `--clientauth`, `--certfile`, and `--keyfile` for every transaction.
+3.  **Hardcoded Identities**: Governance scripts (like `sync-anchors.sh`) often hardcode the first organization (Org1MSP). In an mTLS network, these scripts must be polymorphic and present the identity of the specific organization they are modulating.
+
+**Solution:**
+1.  **CLI Power Config**: Ensure the CLI's `core.yaml` has `clientAuthRequired: true`.
+2.  **Explicit CLI Flags**: For Orderer operations (fetch/update), always include:
+    `--clientauth --certfile <Admin_TLS_Cert> --keyfile <Admin_TLS_Key>`
+3.  **Dynamic Scripting**: Update all automation to dynamically construct mTLS arguments based on the target organization's crypto material.
+
 ---
 
 ### 2.6 Registration Errors (TLS & Duplicate Users)
@@ -313,7 +337,7 @@ Hardcoded `localhost` inside a container refers to the container itself, not the
 
 ---
 
-**Last Updated**: 2026-01-08
+**Last Updated**: 2026-01-20
 
 ### 2.7 Identity Collision: `Authentication failure` on Multi-Org
 

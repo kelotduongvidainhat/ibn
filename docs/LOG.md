@@ -198,3 +198,19 @@ This document logs the manual steps taken to add a new organization (Org2) to th
 3.  **Toolkit Integration**:
     - Added a dedicated "Revoke Identity" option to the `ibn-ctl` master menu.
     - Updated documentation to reflect the new security protocol.
+
+---
+## Phase 13: Zero Trust Architecture (mTLS Hardening)
+
+1.  **Strict Transport Security**:
+    - Enforced Mutual TLS (mTLS) across the entire network by setting `CLIENTAUTHREQUIRED=true` on all Peers and Orderers.
+    - Updated the Global TLS CA to become the root of trust for all transport identities.
+2.  **CLI "Identity Blind Spot" Resolution**:
+    - **Discovery**: Identified a critical coupling in the `peer` binary where it refuses to load client TLS certificates unless the server-side `clientAuthRequired: true` flag is enabled in its own `core.yaml`.
+    - **Fix**: Reconfigured the administrative CLI with a "Power Configuration" that enables client-side mTLS and explicitly maps Admin TLS keys.
+3.  **Governance Toolkit Hardening**:
+    - **Dynamic Identity**: Refactored `sync-anchors.sh` to remove hardcoded `Org1MSP` identifiers. The script now dynamically builds mTLS arguments based on the target organization's identity.
+    - **Hardened Orchestration**: Updated `create-channel.sh`, `mass-approve.sh`, and `mass-commit.sh` to provide explicit mTLS flags (`--clientauth`, `--certfile`, `--keyfile`) for all Orderer and Peer operations.
+4.  **Backend mTLS Integration**:
+    - Refactored `backend/internal/fabric/connection.go` to support gRPC client certificates.
+    - Provisioned the backend container with dedicated Admin TLS credentials to satisfy peer client authentication requirements.

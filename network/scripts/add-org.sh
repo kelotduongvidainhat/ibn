@@ -63,6 +63,16 @@ SCRIPTS_DIR="${NETWORK_DIR}/scripts"
 ARTIFACTS_DIR="${NETWORK_DIR}/channel-artifacts"
 export PATH="${BIN_DIR}:${PATH}"
 
+# --- VERIFIED mTLS PARAMETERS FOR CLI ---
+# These variables ensure the CLI presents its identity to mTLS-enabled peers.
+export CLI_MTLS_ARGS="-e CORE_PEER_TLS_ENABLED=true \
+  -e CORE_PEER_TLS_CLIENTAUTHREQUIRED=true \
+  -e CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt \
+  -e CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt \
+  -e CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key \
+  -e CORE_PEER_TLS_CLIENTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt \
+  -e CORE_PEER_TLS_CLIENTKEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key"
+
 echo "📍 Assigned New Organization ID: ${ORG_NUM} (${MSP_ID})"
 
 # 3. Persist ID reservation
@@ -160,6 +170,8 @@ services:
     - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
     - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
     - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+    - CORE_PEER_TLS_CLIENTAUTHREQUIRED=true
+    - CORE_PEER_TLS_CLIENTROOTCAS_FILES=/etc/hyperledger/fabric/tls/ca.crt
     - CORE_PEER_ID=peer0.${DOMAIN}
     - CORE_PEER_ADDRESS=peer0.${DOMAIN}:7051
     - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
@@ -221,6 +233,7 @@ fabric-ca-client register --caname "ca-${ORG_NAME}" --id.name "orgadmin" --id.se
 # Register TLS Identity (Global TLS CA)
 echo "--- Registering ${ORG_NAME} TLS Identities ---"
 FABRIC_CA_CLIENT_HOME="${TLS_CA_HOME}" fabric-ca-client register --caname ca-tls --id.name "${ORG_NAME}-peer0" --id.secret peer0pw --id.type peer --tls.certfiles "${TLS_ROOT_CERT}" 2>/dev/null
+FABRIC_CA_CLIENT_HOME="${TLS_CA_HOME}" fabric-ca-client register --caname ca-tls --id.name "${ORG_NAME}-admin" --id.secret adminpw --id.type admin --tls.certfiles "${TLS_ROOT_CERT}" 2>/dev/null
 set -e
 
 # MSP Folder for Org
@@ -235,6 +248,14 @@ ADMIN_DIR="${NETWORK_DIR}/organizations/peerOrganizations/${DOMAIN}/users/Admin@
 mkdir -p "${ADMIN_DIR}"
 fabric-ca-client enroll -u https://orgadmin:adminpw@localhost:${CA_PORT} --caname "ca-${ORG_NAME}" -M "${ADMIN_DIR}" --tls.certfiles "${ORG_ROOT_CERT}"
 cp "${ADMIN_DIR}/cacerts/"*.pem "${ADMIN_DIR}/cacerts/ca.crt"
+
+# Enroll Admin TLS (New Org Admin Client Certs)
+ADMIN_TLS_DIR="${NETWORK_DIR}/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/tls"
+mkdir -p "${ADMIN_TLS_DIR}"
+FABRIC_CA_CLIENT_HOME="${TLS_CA_HOME}" fabric-ca-client enroll -u https://${ORG_NAME}-admin:adminpw@localhost:5054 --caname ca-tls --enrollment.profile tls --csr.hosts localhost -M "${ADMIN_TLS_DIR}" --tls.certfiles "${TLS_ROOT_CERT}"
+cp "${ADMIN_TLS_DIR}/keystore/"* "${ADMIN_TLS_DIR}/client.key"
+cp "${ADMIN_TLS_DIR}/signcerts/"* "${ADMIN_TLS_DIR}/client.crt"
+cp "${TLS_ROOT_CERT}" "${ADMIN_TLS_DIR}/ca.crt"
 
 # NodeOU Config
 cat > "${ORG_MSP}/config.yaml" <<EOF
@@ -264,6 +285,7 @@ configtxgen -printOrg "${MSP_ID}" > "${ARTIFACTS_DIR}/${ORG_NAME}.json"
 # We allow this to fail if no differences are detected
 set +e
 docker exec \
+  ${CLI_MTLS_ARGS} \
   -e CORE_PEER_LOCALMSPID="Org1MSP" \
   -e CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp \
   cli /opt/gopath/src/github.com/hyperledger/fabric/peer/scripts/internal_config_update.sh "${CHANNEL_NAME}" "/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts/${ORG_NAME}.json" "${MSP_ID}"
@@ -282,6 +304,7 @@ if [ $UPDATE_RESULT -eq 0 ]; then
         echo "Signing with ${EXISTING_MSP_ID}..."
         
         docker exec \
+          ${CLI_MTLS_ARGS} \
           -e CORE_PEER_LOCALMSPID="${EXISTING_MSP_ID}" \
           -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${EXISTING_ORG}/users/Admin@${EXISTING_ORG}/msp" \
           cli peer channel signconfigtx -f update_in_envelope.pb
@@ -294,9 +317,12 @@ if [ $UPDATE_RESULT -eq 0 ]; then
     while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
         set +e
         docker exec \
+          ${CLI_MTLS_ARGS} \
           -e CORE_PEER_LOCALMSPID="Org1MSP" \
           -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp" \
-          cli peer channel update -f update_in_envelope.pb -c "${CHANNEL_NAME}" -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt
+          cli peer channel update -f update_in_envelope.pb -c "${CHANNEL_NAME}" -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt \
+          --clientauth --certfile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt \
+          --keyfile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key
         
         if [ $? -eq 0 ]; then
             SUCCESS=true
@@ -330,6 +356,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     sleep 2
     # Get current height
     HEIGHT=$(docker exec \
+      ${CLI_MTLS_ARGS} \
       -e CORE_PEER_ADDRESS="peer0.${DOMAIN}:7051" \
       -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
       -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp" \
@@ -364,6 +391,7 @@ if [ -f "${NETWORK_DIR}/packaging/package_id.txt" ]; then
     while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
         set +e
         docker exec \
+          ${CLI_MTLS_ARGS} \
           -e CORE_PEER_ADDRESS="peer0.${DOMAIN}:7051" \
           -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
           -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp" \

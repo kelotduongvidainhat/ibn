@@ -19,7 +19,13 @@ UPDATE_JSON="update.json"
 ENVELOPE_PB="update_in_envelope.pb"
 
 echo "📥 Fetching latest config block for $CHANNEL..."
-peer channel fetch config $CONFIG_BLOCK -c $CHANNEL -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt
+# Detect if mTLS certificates are provided via environment
+MTLS_FLAGS=""
+if [ -f "$CORE_PEER_TLS_CLIENTCERT_FILE" ] && [ -f "$CORE_PEER_TLS_CLIENTKEY_FILE" ]; then
+    MTLS_FLAGS="--clientauth --certfile $CORE_PEER_TLS_CLIENTCERT_FILE --keyfile $CORE_PEER_TLS_CLIENTKEY_FILE"
+fi
+
+peer channel fetch config $CONFIG_BLOCK -c $CHANNEL -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt $MTLS_FLAGS
 
 echo "🔓 Decoding config block..."
 configtxlator proto_decode --input $CONFIG_BLOCK --type common.Block | jq .data.data[0].payload.data.config > $CONFIG_JSON

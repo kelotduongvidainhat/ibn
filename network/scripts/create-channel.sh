@@ -14,6 +14,16 @@ fi
 NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 echo "🚀 [CHANNEL] Initiating creation of channel: ${CHANNEL_NAME}..."
 
+# --- VERIFIED mTLS PARAMETERS FOR CLI ---
+# These variables ensure the CLI presents its identity to mTLS-enabled peers.
+export CLI_MTLS_ARGS="-e CORE_PEER_TLS_ENABLED=true \
+  -e CORE_PEER_TLS_CLIENTAUTHREQUIRED=true \
+  -e CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt \
+  -e CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt \
+  -e CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key \
+  -e CORE_PEER_TLS_CLIENTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt \
+  -e CORE_PEER_TLS_CLIENTKEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key"
+
 # 0. Assemble configuration
 "${NETWORK_DIR}/scripts/assemble-config.sh"
 
@@ -66,6 +76,7 @@ for org_dir in "${NETWORK_DIR}/organizations/peerOrganizations"/*; do
         echo "   Joining ${PEER_NAME} (${MSP_ID})..."
         
         docker exec \
+          ${CLI_MTLS_ARGS} \
           -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
           -e CORE_PEER_ADDRESS="${PEER_NAME}:7051" \
           -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${ORG_DOMAIN}/users/Admin@${ORG_DOMAIN}/msp" \

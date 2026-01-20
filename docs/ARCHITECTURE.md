@@ -63,6 +63,12 @@ To scale to multiple applications (Tea-Tracking, Ownership, etc.), the following
 *   **Platform Role**: Provides "Bank-Grade" access control within the smart contract.
 *   **Strategic Goal**: Prevent horizontal privilege escalation by ensuring only users with specific "Functional Entitlements" can trigger critical ledger mutations.
 
+### 10. Zero Trust Transport (Mutual TLS)
+*   **The Component**: Transport Layer Security (TLS) with Client Authentication.
+*   **Decoupling**: Security is enforced at the network socket layer, independent of the MSP identity.
+*   **Platform Role**: Provides bidirectional verification (Client-to-Server and Server-to-Client) for every transaction.
+*   **Strategic Goal**: Prevent "Man-in-the-Middle" attacks and ensure that even if a node has a valid channel-level MSP certificate, it cannot connect without a valid, CA-issued transport certificate.
+
 ---
 
 ## 🗺️ Conceptual Layers

@@ -50,21 +50,22 @@ ORG1_ROOT_CERT="${ORG1_CA_HOME}/ca-cert.pem"
 FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client enroll -u https://admin:adminpw@localhost:7054 --caname ca-org1 --tls.certfiles "${ORG1_ROOT_CERT}"
 
 # Register MSP Identities (Identity CA)
-FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client register --caname ca-org1 --id.name peer0 --id.secret peer0pw --id.type peer --tls.certfiles "${ORG1_ROOT_CERT}"
-FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client register --caname ca-org1 --id.name org1admin --id.secret org1adminpw --id.type admin --id.attrs 'role=admin:ecert' --tls.certfiles "${ORG1_ROOT_CERT}"
-FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client register --caname ca-org1 --id.name manager1 --id.secret manager1pw --id.type client --id.attrs 'role=manager:ecert' --tls.certfiles "${ORG1_ROOT_CERT}"
-FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client register --caname ca-org1 --id.name viewer1 --id.secret viewer1pw --id.type client --id.attrs 'role=viewer:ecert' --tls.certfiles "${ORG1_ROOT_CERT}"
+FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client register --caname ca-org1 --id.name peer0 --id.secret peer0pw --id.type peer --tls.certfiles "${ORG1_ROOT_CERT}" || true
+FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client register --caname ca-org1 --id.name org1admin --id.secret org1adminpw --id.type admin --id.attrs 'role=admin:ecert' --tls.certfiles "${ORG1_ROOT_CERT}" || true
+FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client register --caname ca-org1 --id.name manager1 --id.secret manager1pw --id.type client --id.attrs 'role=manager:ecert' --tls.certfiles "${ORG1_ROOT_CERT}" || true
+FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client register --caname ca-org1 --id.name viewer1 --id.secret viewer1pw --id.type client --id.attrs 'role=viewer:ecert' --tls.certfiles "${ORG1_ROOT_CERT}" || true
 
 # Register TLS Identities (Global TLS CA)
 echo "--- Registering Org1 TLS Identities ---"
-FABRIC_CA_CLIENT_HOME="${TLS_CA_HOME}" fabric-ca-client register --caname ca-tls --id.name peer0 --id.secret peer0pw --id.type peer --tls.certfiles "${TLS_ROOT_CERT}"
+FABRIC_CA_CLIENT_HOME="${TLS_CA_HOME}" fabric-ca-client register --caname ca-tls --id.name peer0 --id.secret peer0pw --id.type peer --tls.certfiles "${TLS_ROOT_CERT}" || true
+FABRIC_CA_CLIENT_HOME="${TLS_CA_HOME}" fabric-ca-client register --caname ca-tls --id.name "org1-admin" --id.secret adminpw --id.type admin --tls.certfiles "${TLS_ROOT_CERT}" || true
 
 # Enroll Peer0 MSP (Identity CA)
 echo "--- Enrolling Peer0 MSP ---"
 PEER_MSP_DIR="${NETWORK_DIR}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp"
 mkdir -p "${PEER_MSP_DIR}"
 FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client enroll -u https://peer0:peer0pw@localhost:7054 --caname ca-org1 -M "${PEER_MSP_DIR}" --tls.certfiles "${ORG1_ROOT_CERT}"
-cp "${PEER_MSP_DIR}/cacerts/"* "${PEER_MSP_DIR}/cacerts/ca.crt"
+cp "${PEER_MSP_DIR}/cacerts/"*.pem "${PEER_MSP_DIR}/cacerts/ca.crt" || true
 generate_config_yaml "${PEER_MSP_DIR}"
 
 # Enroll Peer0 TLS (Global TLS CA)
@@ -72,8 +73,8 @@ echo "--- Enrolling Peer0 TLS using Global TLS CA ---"
 PEER_TLS_DIR="${NETWORK_DIR}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls"
 mkdir -p "${PEER_TLS_DIR}"
 FABRIC_CA_CLIENT_HOME="${TLS_CA_HOME}" fabric-ca-client enroll -u https://peer0:peer0pw@localhost:5054 --caname ca-tls --enrollment.profile tls --csr.hosts peer0.org1.example.com,peer0.org1.example.com,localhost -M "${PEER_TLS_DIR}" --tls.certfiles "${TLS_ROOT_CERT}"
-cp "${PEER_TLS_DIR}/keystore/"* "${PEER_TLS_DIR}/server.key"
-cp "${PEER_TLS_DIR}/signcerts/"* "${PEER_TLS_DIR}/server.crt"
+cp "${PEER_TLS_DIR}/keystore/"*_sk "${PEER_TLS_DIR}/server.key" || cp "${PEER_TLS_DIR}/keystore/"* "${PEER_TLS_DIR}/server.key"
+cp "${PEER_TLS_DIR}/signcerts/"*.pem "${PEER_TLS_DIR}/server.crt" || cp "${PEER_TLS_DIR}/signcerts/"* "${PEER_TLS_DIR}/server.crt"
 # CRITICAL: The TLS Root CA must be the GLOBAL CA
 cp "${TLS_ROOT_CERT}" "${PEER_TLS_DIR}/ca.crt"
 
@@ -82,10 +83,19 @@ echo "--- Enrolling Org1 Admin ---"
 ADMIN_MSP_DIR="${NETWORK_DIR}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
 mkdir -p "${ADMIN_MSP_DIR}"
 FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client enroll -u https://org1admin:org1adminpw@localhost:7054 --caname ca-org1 -M "${ADMIN_MSP_DIR}" --tls.certfiles "${ORG1_ROOT_CERT}"
-cp "${ADMIN_MSP_DIR}/keystore/"* "${ADMIN_MSP_DIR}/keystore/priv_sk"
-cp "${ADMIN_MSP_DIR}/signcerts/"* "${ADMIN_MSP_DIR}/signcerts/Admin@org1.example.com-cert.pem"
-cp "${ADMIN_MSP_DIR}/cacerts/"* "${ADMIN_MSP_DIR}/cacerts/ca.crt"
+cp "${ADMIN_MSP_DIR}/keystore/"*_sk "${ADMIN_MSP_DIR}/keystore/priv_sk" || cp "${ADMIN_MSP_DIR}/keystore/"* "${ADMIN_MSP_DIR}/keystore/priv_sk"
+cp "${ADMIN_MSP_DIR}/signcerts/"*.pem "${ADMIN_MSP_DIR}/signcerts/Admin@org1.example.com-cert.pem" || cp "${ADMIN_MSP_DIR}/signcerts/"* "${ADMIN_MSP_DIR}/signcerts/Admin@org1.example.com-cert.pem"
+cp "${ADMIN_MSP_DIR}/cacerts/"*.pem "${ADMIN_MSP_DIR}/cacerts/ca.crt" || cp "${ADMIN_MSP_DIR}/cacerts/"* "${ADMIN_MSP_DIR}/cacerts/ca.crt"
 generate_config_yaml "${ADMIN_MSP_DIR}"
+
+# Enroll Admin TLS (for mTLS backend/cli)
+echo "--- Enrolling Org1 Admin TLS ---"
+ADMIN_TLS_DIR="${NETWORK_DIR}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls"
+mkdir -p "${ADMIN_TLS_DIR}"
+FABRIC_CA_CLIENT_HOME="${TLS_CA_HOME}" fabric-ca-client enroll -u https://org1-admin:adminpw@localhost:5054 --caname ca-tls --enrollment.profile tls --csr.hosts localhost -M "${ADMIN_TLS_DIR}" --tls.certfiles "${TLS_ROOT_CERT}"
+cp "${ADMIN_TLS_DIR}/keystore/"*_sk "${ADMIN_TLS_DIR}/client.key" || cp "${ADMIN_TLS_DIR}/keystore/"* "${ADMIN_TLS_DIR}/client.key"
+cp "${ADMIN_TLS_DIR}/signcerts/"*.pem "${ADMIN_TLS_DIR}/client.crt" || cp "${ADMIN_TLS_DIR}/signcerts/"* "${ADMIN_TLS_DIR}/client.crt"
+cp "${TLS_ROOT_CERT}" "${ADMIN_TLS_DIR}/ca.crt"
 
 # Enroll Manager1
 echo "--- Enrolling Manager1 ---"
@@ -117,24 +127,24 @@ ORD_ROOT_CERT="${ORD_CA_HOME}/ca-cert.pem"
 
 # Identity CA Enroll
 FABRIC_CA_CLIENT_HOME="${ORD_CA_HOME}" fabric-ca-client enroll -u https://admin:adminpw@localhost:9054 --caname ca-orderer --tls.certfiles "${ORD_ROOT_CERT}"
-FABRIC_CA_CLIENT_HOME="${ORD_CA_HOME}" fabric-ca-client register --caname ca-orderer --id.name orderer --id.secret ordererpw --id.type orderer --tls.certfiles "${ORD_ROOT_CERT}"
+FABRIC_CA_CLIENT_HOME="${ORD_CA_HOME}" fabric-ca-client register --caname ca-orderer --id.name orderer --id.secret ordererpw --id.type orderer --tls.certfiles "${ORD_ROOT_CERT}" || true
 
 # Register Orderer TLS Identity (Global TLS CA)
-FABRIC_CA_CLIENT_HOME="${TLS_CA_HOME}" fabric-ca-client register --caname ca-tls --id.name orderer --id.secret ordererpw --id.type orderer --tls.certfiles "${TLS_ROOT_CERT}"
+FABRIC_CA_CLIENT_HOME="${TLS_CA_HOME}" fabric-ca-client register --caname ca-tls --id.name orderer --id.secret ordererpw --id.type orderer --tls.certfiles "${TLS_ROOT_CERT}" || true
 
 # Enroll Orderer Identity (MSP)
 ORD_MSP_DIR="${NETWORK_DIR}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp"
 mkdir -p "${ORD_MSP_DIR}"
 FABRIC_CA_CLIENT_HOME="${ORD_CA_HOME}" fabric-ca-client enroll -u https://orderer:ordererpw@localhost:9054 --caname ca-orderer -M "${ORD_MSP_DIR}" --tls.certfiles "${ORD_ROOT_CERT}"
-cp "${ORD_MSP_DIR}/cacerts/"* "${ORD_MSP_DIR}/cacerts/ca.crt"
+cp "${ORD_MSP_DIR}/cacerts/"*.pem "${ORD_MSP_DIR}/cacerts/ca.crt" || true
 generate_config_yaml "${ORD_MSP_DIR}"
 
 # Enroll Orderer TLS (Global TLS CA)
 ORD_TLS_DIR="${NETWORK_DIR}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls"
 mkdir -p "${ORD_TLS_DIR}"
 FABRIC_CA_CLIENT_HOME="${TLS_CA_HOME}" fabric-ca-client enroll -u https://orderer:ordererpw@localhost:5054 --caname ca-tls --enrollment.profile tls --csr.hosts orderer.example.com,orderer.example.com,localhost -M "${ORD_TLS_DIR}" --tls.certfiles "${TLS_ROOT_CERT}"
-cp "${ORD_TLS_DIR}/keystore/"* "${ORD_TLS_DIR}/server.key"
-cp "${ORD_TLS_DIR}/signcerts/"* "${ORD_TLS_DIR}/server.crt"
+cp "${ORD_TLS_DIR}/keystore/"*_sk "${ORD_TLS_DIR}/server.key" || cp "${ORD_TLS_DIR}/keystore/"* "${ORD_TLS_DIR}/server.key"
+cp "${ORD_TLS_DIR}/signcerts/"*.pem "${ORD_TLS_DIR}/server.crt" || cp "${ORD_TLS_DIR}/signcerts/"* "${ORD_TLS_DIR}/server.crt"
 # CRITICAL: Orderer TLS Root must be the GLOBAL CA
 cp "${TLS_ROOT_CERT}" "${ORD_TLS_DIR}/ca.crt"
 

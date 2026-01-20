@@ -21,6 +21,16 @@ export PATH="${BIN_DIR}:${PATH}"
 export COMPOSE_PROJECT_NAME=fabric
 export COMPOSE_IGNORE_ORPHANS=True
 
+# --- VERIFIED mTLS PARAMETERS FOR CLI ---
+# These variables ensure the CLI presents its identity to mTLS-enabled peers.
+export CLI_MTLS_ARGS="-e CORE_PEER_TLS_ENABLED=true \
+  -e CORE_PEER_TLS_CLIENTAUTHREQUIRED=true \
+  -e CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt \
+  -e CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt \
+  -e CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key \
+  -e CORE_PEER_TLS_CLIENTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt \
+  -e CORE_PEER_TLS_CLIENTKEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key"
+
 # --- DYNAMIC CONFIGURATION ---
 ORG_NUM=$(echo $ORG_NAME | grep -o '[0-9]\+')
 
@@ -128,6 +138,8 @@ service_peer = {
         'CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt',
         'CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key',
         'CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt',
+        'CORE_PEER_TLS_CLIENTAUTHREQUIRED=true',
+        'CORE_PEER_TLS_CLIENTROOTCAS_FILES=/etc/hyperledger/fabric/tls/ca.crt',
         f'CORE_PEER_ID={peer_svc_name}',
         f'CORE_PEER_ADDRESS={peer_svc_name}:7051',
         f'CORE_PEER_LISTENADDRESS=0.0.0.0:7051',
@@ -229,6 +241,7 @@ if [ ! -z "$CHANNEL_NAME" ]; then
     # If not, we might need to fetch it. (omitted for brevity, usually exists on CLI).
 
     docker exec \
+      ${CLI_MTLS_ARGS} \
       -e CORE_PEER_ADDRESS="${PEER_NAME}:7051" \
       -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
       -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp" \

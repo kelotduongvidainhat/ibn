@@ -25,6 +25,16 @@ BOLD='\033[1m'
 
 echo -e "${BOLD}🗳️  Starting Mass Approval for Chaincode: ${CC_NAME} (v${CC_VERSION}, seq ${CC_SEQUENCE})${NC}"
 
+# --- VERIFIED mTLS PARAMETERS FOR CLI ---
+# These variables ensure the CLI presents its identity to mTLS-enabled peers.
+export CLI_MTLS_ARGS="-e CORE_PEER_TLS_ENABLED=true \
+  -e CORE_PEER_TLS_CLIENTAUTHREQUIRED=true \
+  -e CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt \
+  -e CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt \
+  -e CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key \
+  -e CORE_PEER_TLS_CLIENTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt \
+  -e CORE_PEER_TLS_CLIENTKEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key"
+
 if [ ! -f "$PACKAGE_ID_FILE" ]; then
     echo -e "${RED}❌ Error: package_id.txt not found in ${NETWORK_DIR}/packaging/${NC}"
     exit 1
@@ -57,6 +67,7 @@ for ORG_DIR in $ORGS_DIRS; do
         PEER_NAME=$(basename "$peer_dir")
         
         IS_JOINED=$(docker exec \
+          ${CLI_MTLS_ARGS} \
           -e CORE_PEER_ADDRESS="${PEER_NAME}:7051" \
           -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
           -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp" \
@@ -77,6 +88,7 @@ for ORG_DIR in $ORGS_DIRS; do
     echo -ne "✍️  Approving for ${BOLD}${MSP_ID}${NC} (${DOMAIN}) via ${TARGET_PEER}... "
 
     docker exec \
+      ${CLI_MTLS_ARGS} \
       -e CORE_PEER_ADDRESS="${TARGET_PEER}:7051" \
       -e CORE_PEER_LOCALMSPID="${MSP_ID}" \
       -e CORE_PEER_MSPCONFIGPATH="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/msp" \
@@ -102,7 +114,7 @@ done
 
 echo "--------------------------------------------------------------------------------"
 echo -e "${BOLD}🔍 Checking Commit Readiness...${NC}"
-docker exec cli peer lifecycle chaincode checkcommitreadiness \
+docker exec ${CLI_MTLS_ARGS} cli peer lifecycle chaincode checkcommitreadiness \
     --channelID "${CHANNEL_NAME}" --name "${CC_NAME}" --version "${CC_VERSION}" \
     --sequence "${CC_SEQUENCE}" "${POLICY_ARGS[@]}" --output json --tls \
     --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt

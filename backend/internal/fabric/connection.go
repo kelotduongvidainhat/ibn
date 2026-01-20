@@ -1,6 +1,7 @@
 package fabric
 
 import (
+	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"os"
@@ -10,20 +11,38 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// NewGrpcConnection establishes a gRPC connection to the Fabric Peer
+// NewGrpcConnection establishes a gRPC connection to the Fabric Peer using Mutual TLS
 func NewGrpcConnection() (*grpc.ClientConn, error) {
 	tlsCertPath := os.Getenv("TLS_CERT_PATH")
 	peerEndpoint := os.Getenv("PEER_ENDPOINT")
 	gatewayHost := os.Getenv("PEER_HOST_OVERRIDE")
 
-	certificate, err := os.ReadFile(tlsCertPath)
+	// Identity paths for Client Authentication (mTLS)
+	clientCertPath := os.Getenv("CLIENT_TLS_CERT_PATH")
+	clientKeyPath := os.Getenv("CLIENT_TLS_KEY_PATH")
+
+	caCertificate, err := os.ReadFile(tlsCertPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read TLS certificate: %w", err)
+		return nil, fmt.Errorf("failed to read TLS CA certificate: %w", err)
 	}
 
 	certPool := x509.NewCertPool()
-	certPool.AppendCertsFromPEM(certificate)
-	transportCredentials := credentials.NewClientTLSFromCert(certPool, gatewayHost)
+	certPool.AppendCertsFromPEM(caCertificate)
+
+	var transportCredentials credentials.TransportCredentials
+	if clientCertPath != "" && clientKeyPath != "" {
+		cert, err := tls.LoadX509KeyPair(clientCertPath, clientKeyPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load client TLS key pair: %w", err)
+		}
+		transportCredentials = credentials.NewTLS(&tls.Config{
+			RootCAs:      certPool,
+			Certificates: []tls.Certificate{cert},
+			ServerName:   gatewayHost,
+		})
+	} else {
+		transportCredentials = credentials.NewClientTLSFromCert(certPool, gatewayHost)
+	}
 
 	connection, err := grpc.Dial(peerEndpoint, grpc.WithTransportCredentials(transportCredentials))
 	if err != nil {
