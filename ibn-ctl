@@ -26,6 +26,17 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 BOLD='\033[1m'
 
+# Check Prerequisites
+if [ "$1" != "down" ] && [ "$1" != "fresh" ]; then
+    # Light check for main tools
+    for tool in docker jq bc python3; do
+        if ! command -v "$tool" &> /dev/null; then
+            echo -e "${RED}❌ Warning: '$tool' is missing. Some features may fail.${NC}"
+            echo -e "Run ${CYAN}./fresh-start.sh${NC} for a full technology audit."
+        fi
+    done
+fi
+
 function show_header() {
     clear
     echo -e "${CYAN}${BOLD}"

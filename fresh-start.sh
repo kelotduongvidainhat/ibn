@@ -15,6 +15,72 @@ SCRIPTS_DIR="${PROJECT_ROOT}/network/scripts"
 export COMPOSE_PROJECT_NAME=fabric
 export COMPOSE_IGNORE_ORPHANS=True
 
+# -1. Pre-flight Checks
+check_prerequisites() {
+    echo -e "${BOLD}Step -1: Checking Technical Prerequisites...${NC}"
+    local missing=0
+    local RED='\033[0;31m'
+    local GREEN='\033[0;32m'
+
+    # 1. Check Binary Tools
+    declare -A tools=(
+        ["docker"]="docker.io"
+        ["jq"]="jq"
+        ["bc"]="bc"
+        ["python3"]="python3"
+        ["curl"]="curl"
+    )
+
+    for tool in "${!tools[@]}"; do
+        if ! command -v "$tool" &> /dev/null; then
+            echo -e "${RED}❌ Missing: $tool${NC} (Try: sudo apt-get install ${tools[$tool]})"
+            missing=1
+        else
+            echo -e "${GREEN}✔ $tool: Found${NC}"
+        fi
+    done
+
+    # 2. Check Docker Daemon & Compose
+    if ! docker info &> /dev/null; then
+        echo -e "${RED}❌ Docker daemon is not running.${NC}"
+        missing=1
+    fi
+
+    if docker compose version &> /dev/null; then
+        echo -e "${GREEN}✔ docker compose: Found${NC}"
+    elif command -v docker-compose &> /dev/null; then
+        echo -e "${GREEN}✔ docker-compose: Found${NC}"
+    else
+        echo -e "${RED}❌ Missing: docker compose${NC} (Check: https://docs.docker.com/compose/install/)"
+        missing=1
+    fi
+
+    # 3. Check Python Libraries
+    if ! python3 -c "import yaml" &> /dev/null; then
+        echo -e "${RED}❌ Missing: Python PyYAML${NC} (Try: pip3 install pyyaml)"
+        missing=1
+    else
+        echo -e "${GREEN}✔ Python PyYAML: Found${NC}"
+    fi
+
+    # 4. Check Fabric Binaries
+    local bin_dir="${PROJECT_ROOT}/bin"
+    if [ ! -f "${bin_dir}/configtxgen" ]; then
+        echo -e "${RED}❌ Missing: Fabric Binaries in $bin_dir${NC}"
+        missing=1
+    else
+        echo -e "${GREEN}✔ Fabric Binaries: Found${NC}"
+    fi
+
+    if [ $missing -eq 1 ]; then
+        echo -e "\n${RED}${BOLD}STOP: Missing required technologies. Please install them and try again.${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}${BOLD}Prerequisites Check Passed!${NC}\n"
+}
+
+check_prerequisites
+
 echo -e "${BOLD}${CYAN}💥 STARTING TOTAL NETWORK RESET (MODULAR GOVERNANCE)${NC}"
 echo "--------------------------------------------------------------------------------"
 

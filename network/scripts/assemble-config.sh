@@ -76,27 +76,6 @@ cat >> "${OUTPUT}" <<EOF
       Policies: *id009
       Capabilities:
         V2_5: true
-  TwoOrgChannel:
-    Policies: *id001
-    Capabilities: *id002
-    Orderer:
-      OrdererType: etcdraft
-      EtcdRaft: *id003
-      Addresses: *id004
-      BatchTimeout: 2s
-      BatchSize: *id005
-      Organizations:
-      - *id006
-      Policies: *id007
-      Capabilities:
-        V2_0: true
-    Application:
-      Organizations:
-      - *id008
-      - *id502
-      Policies: *id009
-      Capabilities:
-        V2_5: true
 EOF
 
 echo "✅ Configuration assembled successfully at ${OUTPUT}"
