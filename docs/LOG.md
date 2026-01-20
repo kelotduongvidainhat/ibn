@@ -185,3 +185,16 @@ This document logs the manual steps taken to add a new organization (Org2) to th
 3.  **Deployment**:
     - Rebuilt the backend Docker container to pick up new observability endpoints.
     - Updated `ARCHITECTURE.md` and `ROADMAP.md`.
+
+---
+## Phase 12: Enterprise Governance (Certificate Revocation)
+
+1.  **Revocation Workflow**:
+    - Developed `revoke-identity.sh` to handle the full revocation lifecycle.
+    - Integrated `fabric-ca-client revoke` and `gencrl` to manage the CA database and generate signed exclusion lists.
+2.  **Channel-wide Enforcement**:
+    - Implemented an automated "Admin Dance" to inject CRLs into the channel's MSP configuration.
+    - Verified that revocation is cross-organization, requiring signatures from the consortium to admit the new CRL.
+3.  **Toolkit Integration**:
+    - Added a dedicated "Revoke Identity" option to the `ibn-ctl` master menu.
+    - Updated documentation to reflect the new security protocol.

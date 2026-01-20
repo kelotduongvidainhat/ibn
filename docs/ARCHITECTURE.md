@@ -43,6 +43,7 @@ To scale to multiple applications (Tea-Tracking, Ownership, etc.), the following
 *   **Strategic Goal**: Prevent identity collisions and maintain an immutable record of consortium changes.
     - **Monotonic ID Policy**: IDs are treated as permanent serial numbers. Once an Org ID is retired, it is never reused.
     - **Two-Step Removal Protocol**: Mandates a "Freeze" (soft-lock) before a "Remove" (hard-delete) to ensure data safety.
+    - **Identity Revocation protocol**: Enables blocking specific certificates via CRL (Certificate Revocation List) without affecting organization membership.
 
 ### 7. Dynamic Consensus Scaling
 *   **The Component**: Orderer Cluster Management (`add-orderer.sh`).

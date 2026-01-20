@@ -66,6 +66,7 @@ function usage() {
     echo "  onboard     Register/Enroll a new client user"
     echo "  snap        Take a resource snapshot (baseline)"
     echo "  diff        Compare current resources with snapshot (delta)"
+    echo "  revoke      Permanently block a user/node identity"
     echo "  fresh       Fresh Start: Reset and build network from scratch"
     echo "  down        Stop and wipe the entire network"
     echo "  -i          Enter Interactive Menu mode (default)"
@@ -96,7 +97,8 @@ function interactive_menu() {
         echo "18) 📋 Org Logs            Stream logs by Organization"
         echo "19) 📸 Take Snapshot       Save current baseline"
         echo "20) ⚖️  Resource Audit     Compare delta vs baseline"
-        echo "21) 🚪 Exit"
+        echo "21) 📜 Revoke Identity     Permanently block a user/node"
+        echo "22) 🚪 Exit"
         echo ""
         read -p "Select an option: " opt
 
@@ -186,7 +188,14 @@ function interactive_menu() {
                 ;;
             19) "${SCRIPTS_DIR}/network-audit.sh" checkpoint ;;
             20) "${SCRIPTS_DIR}/network-audit.sh" diff ;;
-            21|exit|quit) exit 0 ;;
+            21)
+                read -p "Enter Client ID to revoke: " rcid
+                read -p "Enter Org Name (org1): " rorg
+                read -p "Channel (mychannel): " rchan
+                rchan=${rchan:-mychannel}
+                "${SCRIPTS_DIR}/revoke-identity.sh" "$rcid" "$rorg" "$rchan"
+                ;;
+            22|exit|quit) exit 0 ;;
             *) echo -e "${RED}Invalid option${NC}" ;;
         esac
         echo -e "\n${YELLOW}Press Enter to return to menu...${NC}"
@@ -219,6 +228,7 @@ else
         diff)       "${SCRIPTS_DIR}/network-audit.sh" diff ;;
         snap)       "${SCRIPTS_DIR}/network-audit.sh" checkpoint ;;
         logs)       "${SCRIPTS_DIR}/org-logs.sh" "$2" ;;
+        revoke)     "${SCRIPTS_DIR}/revoke-identity.sh" "$2" "$3" "$4" ;;
         help)       usage ;;
         *)          echo -e "${RED}Unknown command: $1${NC}"; usage; exit 1 ;;
     esac

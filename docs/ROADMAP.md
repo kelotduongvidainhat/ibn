@@ -39,7 +39,7 @@ This document outlines the strategic progression of the IBN (Integrated Blockcha
 *   **[x] Attribute-Based Access Control (ABAC)**: Use Fabric CA attributes (e.g., `role:manager`) to restrict smart contract functions.
 *   **[x] Resource Delta Profiling**: Implement snapshot and diff capabilities to track RAM/Storage costs during network scaling.
 *   **[x] Environment Hardening**: Resolved external credential helper conflicts and established local binary management for host tools.
-*   **[ ] Certificate Revocation**: Implement/Test CRL (Certificate Revocation List) management.
+*   **[x] Certificate Revocation**: Implement/Test CRL (Certificate Revocation List) management.
 *   **[ ] Mutual TLS Hardening**: External domain validation and cert-manager integration.
 
 ---
