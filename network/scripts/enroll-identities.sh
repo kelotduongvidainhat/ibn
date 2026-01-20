@@ -52,7 +52,8 @@ FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client enroll -u https://admin
 # Register MSP Identities (Identity CA)
 FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client register --caname ca-org1 --id.name peer0 --id.secret peer0pw --id.type peer --tls.certfiles "${ORG1_ROOT_CERT}"
 FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client register --caname ca-org1 --id.name org1admin --id.secret org1adminpw --id.type admin --id.attrs 'role=admin:ecert' --tls.certfiles "${ORG1_ROOT_CERT}"
-FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client register --caname ca-org1 --id.name user1 --id.secret user1pw --id.type client --id.attrs 'role=user:ecert' --tls.certfiles "${ORG1_ROOT_CERT}"
+FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client register --caname ca-org1 --id.name manager1 --id.secret manager1pw --id.type client --id.attrs 'role=manager:ecert' --tls.certfiles "${ORG1_ROOT_CERT}"
+FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client register --caname ca-org1 --id.name viewer1 --id.secret viewer1pw --id.type client --id.attrs 'role=viewer:ecert' --tls.certfiles "${ORG1_ROOT_CERT}"
 
 # Register TLS Identities (Global TLS CA)
 echo "--- Registering Org1 TLS Identities ---"
@@ -85,6 +86,20 @@ cp "${ADMIN_MSP_DIR}/keystore/"* "${ADMIN_MSP_DIR}/keystore/priv_sk"
 cp "${ADMIN_MSP_DIR}/signcerts/"* "${ADMIN_MSP_DIR}/signcerts/Admin@org1.example.com-cert.pem"
 cp "${ADMIN_MSP_DIR}/cacerts/"* "${ADMIN_MSP_DIR}/cacerts/ca.crt"
 generate_config_yaml "${ADMIN_MSP_DIR}"
+
+# Enroll Manager1
+echo "--- Enrolling Manager1 ---"
+MANAGER_MSP_DIR="${NETWORK_DIR}/organizations/peerOrganizations/org1.example.com/users/Manager1@org1.example.com/msp"
+mkdir -p "${MANAGER_MSP_DIR}"
+FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client enroll -u https://manager1:manager1pw@localhost:7054 --caname ca-org1 -M "${MANAGER_MSP_DIR}" --tls.certfiles "${ORG1_ROOT_CERT}"
+generate_config_yaml "${MANAGER_MSP_DIR}"
+
+# Enroll Viewer1
+echo "--- Enrolling Viewer1 ---"
+VIEWER_MSP_DIR="${NETWORK_DIR}/organizations/peerOrganizations/org1.example.com/users/Viewer1@org1.example.com/msp"
+mkdir -p "${VIEWER_MSP_DIR}"
+FABRIC_CA_CLIENT_HOME="${ORG1_CA_HOME}" fabric-ca-client enroll -u https://viewer1:viewer1pw@localhost:7054 --caname ca-org1 -M "${VIEWER_MSP_DIR}" --tls.certfiles "${ORG1_ROOT_CERT}"
+generate_config_yaml "${VIEWER_MSP_DIR}"
 
 # Build Org1 Root MSP
 echo "--- Building Org1 Root MSP ---"

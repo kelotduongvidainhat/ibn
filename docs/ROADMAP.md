@@ -36,7 +36,7 @@ This document outlines the strategic progression of the IBN (Integrated Blockcha
 
 ## 🔐 Phase 9: Enterprise Security & Governance
 *   **[ ] Policy-as-Code (OPA)**: Integrate Open Policy Agent for fine-grained authorization outside the ledger.
-*   **[ ] Attribute-Based Access Control (ABAC)**: Use Fabric CA attributes (e.g., `role:manager`) to restrict smart contract functions.
+*   **[x] Attribute-Based Access Control (ABAC)**: Use Fabric CA attributes (e.g., `role:manager`) to restrict smart contract functions.
 *   **[ ] Certificate Revocation**: Implement/Test CRL (Certificate Revocation List) management.
 *   **[ ] Mutual TLS Hardening**: External domain validation and cert-manager integration.
 

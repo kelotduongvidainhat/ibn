@@ -8,6 +8,18 @@ import (
 	"github.com/hyperledger/fabric-contract-api-go/contractapi" // Main Fabric Contract API
 )
 
+// hasRole is a helper to verify if the client has a specific role attribute
+func (s *SmartContract) hasRole(ctx contractapi.TransactionContextInterface, role string) (bool, error) {
+	val, ok, err := ctx.GetClientIdentity().GetAttributeValue("role")
+	if err != nil {
+		return false, fmt.Errorf("failed to get attribute value: %v", err)
+	}
+	if !ok {
+		return false, nil
+	}
+	return val == role, nil
+}
+
 // SmartContract defines the base structure for the smart contract
 type SmartContract struct {
 	contractapi.Contract // Embeds the contractapi.Contract for base functionality
@@ -29,6 +41,11 @@ const collectionName = "assetCollection"
 
 // InitLedger adds a base set of assets to the ledger
 func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
+	isAdmin, _ := s.hasRole(ctx, "admin")
+	if !isAdmin {
+		return fmt.Errorf("access denied: only users with role 'admin' can initialize the ledger")
+	}
+
 	assets := []Asset{
 		{ID: "asset1", Color: "blue", Size: 5, Owner: "Tomoko", AppraisedValue: 300},
 		{ID: "asset2", Color: "red", Size: 5, Owner: "Brad", AppraisedValue: 400},
@@ -70,6 +87,12 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 
 // CreateAsset issues a new asset to the world state
 func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface, id string, color string, size int, owner string, fileCID string, fileName string) error {
+	isAdmin, _ := s.hasRole(ctx, "admin")
+	isManager, _ := s.hasRole(ctx, "manager")
+	if !isAdmin && !isManager {
+		return fmt.Errorf("access denied: only users with role 'admin' or 'manager' can create assets")
+	}
+
 	fmt.Printf("DEBUG: CreateAsset called for ID: %s, Color: %s, Size: %d, Owner: %s\n", id, color, size, owner)
 	
 	// Check if asset already exists
