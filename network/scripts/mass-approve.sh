@@ -103,6 +103,9 @@ for ORG_DIR in $ORGS_DIRS; do
         "${COLLECTIONS_ARGS[@]}" \
         --tls \
         --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt \
+        --clientauth \
+        --certfile "/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/tls/client.crt" \
+        --keyfile "/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/tls/client.key" \
         --waitForEvent
 
     if [ $? -eq 0 ]; then
@@ -116,5 +119,8 @@ echo "--------------------------------------------------------------------------
 echo -e "${BOLD}🔍 Checking Commit Readiness...${NC}"
 docker exec ${CLI_MTLS_ARGS} cli peer lifecycle chaincode checkcommitreadiness \
     --channelID "${CHANNEL_NAME}" --name "${CC_NAME}" --version "${CC_VERSION}" \
-    --sequence "${CC_SEQUENCE}" "${POLICY_ARGS[@]}" --output json --tls \
-    --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt
+    --sequence "${CC_SEQUENCE}" "${POLICY_ARGS[@]}" "${COLLECTIONS_ARGS[@]}" --output json --tls \
+    --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt \
+    --clientauth \
+    --certfile "/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt" \
+    --keyfile "/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key"

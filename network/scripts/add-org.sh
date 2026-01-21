@@ -399,7 +399,10 @@ if [ -f "${NETWORK_DIR}/packaging/package_id.txt" ]; then
           cli peer lifecycle chaincode approveformyorg \
             --channelID "${CHANNEL_NAME}" --name basic --version 1.0 \
             --package-id "${PACKAGE_ID}" --sequence 1 --tls \
-            --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt
+            --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt \
+            --clientauth \
+            --certfile "/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/tls/client.crt" \
+            --keyfile "/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/${DOMAIN}/users/Admin@${DOMAIN}/tls/client.key"
         
         if [ $? -eq 0 ]; then
             SUCCESS=true
