@@ -62,8 +62,8 @@ export FABRIC_CFG_PATH="${NETWORK_DIR}"
 "${NETWORK_DIR}/../bin/configtxgen" -profile Org1Channel -outputBlock "${NETWORK_DIR}/channel-artifacts/mychannel.block" -channelID mychannel
 
 # 6. Start Rest of Network
-echo "--- Launching Orderer, Peer, and CLI ---"
-docker compose -f "${NETWORK_DIR}/compose/docker-compose-base.yaml" -f "${NETWORK_DIR}/compose/docker-compose-org1.yaml" up -d orderer.example.com peer0.org1.example.com couchdb0 cli
+echo "--- Launching Orderer, Peer, CLI, Prometheus, and Grafana ---"
+docker compose -f "${NETWORK_DIR}/compose/docker-compose-base.yaml" -f "${NETWORK_DIR}/compose/docker-compose-org1.yaml" up -d orderer.example.com peer0.org1.example.com couchdb0 cli prometheus grafana
 
 # 7. Wait for nodes
 echo "--- Waiting for network nodes (10s) ---"

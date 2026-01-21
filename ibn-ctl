@@ -98,7 +98,8 @@ function interactive_menu() {
         echo "19) 📸 Take Snapshot       Save current baseline"
         echo "20) ⚖️  Resource Audit     Compare delta vs baseline"
         echo "21) 📜 Revoke Identity     Permanently block a user/node"
-        echo "22) 🚪 Exit"
+        echo "22) 🚮 Remove Channel      Decommission an app channel"
+        echo "23) 🚪 Exit"
         echo ""
         read -p "Select an option: " opt
 
@@ -195,7 +196,11 @@ function interactive_menu() {
                 rchan=${rchan:-mychannel}
                 "${SCRIPTS_DIR}/revoke-identity.sh" "$rcid" "$rorg" "$rchan"
                 ;;
-            22|exit|quit) exit 0 ;;
+            22)
+                read -p "Enter Channel Name to Remove: " rchan
+                if [ -n "$rchan" ]; then "${SCRIPTS_DIR}/remove-channel.sh" "$rchan"; fi
+                ;;
+            23|exit|quit) exit 0 ;;
             *) echo -e "${RED}Invalid option${NC}" ;;
         esac
         echo -e "\n${YELLOW}Press Enter to return to menu...${NC}"
@@ -229,6 +234,7 @@ else
         snap)       "${SCRIPTS_DIR}/network-audit.sh" checkpoint ;;
         logs)       "${SCRIPTS_DIR}/org-logs.sh" "$2" ;;
         revoke)     "${SCRIPTS_DIR}/revoke-identity.sh" "$2" "$3" "$4" ;;
+        remove-chan) "${SCRIPTS_DIR}/remove-channel.sh" "$2" ;;
         help)       usage ;;
         *)          echo -e "${RED}Unknown command: $1${NC}"; usage; exit 1 ;;
     esac

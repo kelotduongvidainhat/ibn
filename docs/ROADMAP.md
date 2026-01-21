@@ -45,7 +45,7 @@ This document outlines the strategic progression of the IBN (Integrated Blockcha
 ---
 
 ## 📊 Phase 10: Observability & DevSecOps
-*   **[ ] Monitoring Dashboards**: Prometheus exporters for Fabric metrics + Grafana visualization.
+*   **[x] Monitoring Dashboards**: Prometheus exporters for Fabric metrics + Grafana visualization.
 *   **[ ] ELK Stack Integration**: Centralized logging for all 6 Organizations and Orderers.
 *   **[x] Block Visualizer**: Implement a lightweight block explorer to track transaction flow in real-time.
 *   **[ ] CI/CD Pipelines**: Automated chaincode testing and deployment to the CaaS registry.

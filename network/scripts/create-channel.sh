@@ -12,7 +12,37 @@ if [ -z "$CHANNEL_NAME" ]; then
 fi
 
 NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DOCS_LOG_DIR="${NETWORK_DIR}/../docs/logs"
+mkdir -p "${DOCS_LOG_DIR}"
+HISTORY_FILE="${DOCS_LOG_DIR}/channel_index.history"
+RETIRED_LIST="${DOCS_LOG_DIR}/retired_channels.list"
+
 echo "🚀 [CHANNEL] Initiating creation of channel: ${CHANNEL_NAME}..."
+
+# 0. Pre-Flight Checks (Collision Prevention)
+echo "🔍 Checking for channel collisions..."
+
+# A. Check local history/retired lists
+if [ -f "$HISTORY_FILE" ] && grep -qx "${CHANNEL_NAME}" "$HISTORY_FILE"; then
+    echo "❌ ERROR: Channel '${CHANNEL_NAME}' already exists in the registry history."
+    exit 1
+fi
+
+if [ -f "$RETIRED_LIST" ] && grep -qx "${CHANNEL_NAME}" "$RETIRED_LIST"; then
+    echo "❌ ERROR: Channel '${CHANNEL_NAME}' is in the Retired Registry and cannot be reused."
+    exit 1
+fi
+
+# B. Check active Orderer channels (Live check)
+ACTIVE_CHANNELS=$(docker exec cli osnadmin channel list -o orderer.example.com:7053 \
+  --ca-file "/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt" \
+  --client-cert "/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt" \
+  --client-key "/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.key" | jq -r '.channels[].name' 2>/dev/null || echo "")
+
+if echo "$ACTIVE_CHANNELS" | grep -qx "${CHANNEL_NAME}"; then
+    echo "❌ ERROR: Channel '${CHANNEL_NAME}' is currently active on the Ordering Service."
+    exit 1
+fi
 
 # --- VERIFIED mTLS PARAMETERS FOR CLI ---
 # These variables ensure the CLI presents its identity to mTLS-enabled peers.
@@ -86,4 +116,5 @@ for org_dir in "${NETWORK_DIR}/organizations/peerOrganizations"/*; do
 done
 
 echo "✅ [SUCCESS] Channel '${CHANNEL_NAME}' has been provisioned and joined by all members."
+echo "${CHANNEL_NAME}" >> "$HISTORY_FILE"
 echo "📍 Note: You can now deploy chaincode to this channel using mass-approve.sh / mass-commit.sh."

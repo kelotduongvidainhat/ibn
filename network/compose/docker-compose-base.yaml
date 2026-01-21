@@ -58,6 +58,8 @@ services:
     - ORDERER_GENERAL_TLS_CLIENTROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
     - ORDERER_GENERAL_BOOTSTRAPMETHOD=none
     - ORDERER_CHANNELPARTICIPATION_ENABLED=true
+    - ORDERER_OPERATIONS_LISTENADDRESS=0.0.0.0:9443
+    - ORDERER_METRICS_PROVIDER=prometheus
     - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7053
     - ORDERER_ADMIN_TLS_ENABLED=true
     - ORDERER_ADMIN_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
@@ -74,6 +76,7 @@ services:
     ports:
     - 7050:7050
     - 7053:7053
+    - 8443:9443
     networks:
     - test
 
@@ -158,5 +161,32 @@ services:
     networks:
     - test
 
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:v2.47.2
+    volumes:
+    - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+    - 9090:9090
+    networks:
+    - test
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:10.1.5
+    environment:
+    - GF_AUTH_ANONYMOUS_ENABLED=true
+    - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    - GF_AUTH_BASIC_ENABLED=false
+    volumes:
+    - ../monitoring/grafana/provisioning:/etc/grafana/provisioning
+    - grafana-storage:/var/lib/grafana
+    ports:
+    - 3000:3000
+    networks:
+    - test
+
 volumes:
   orderer.example.com:
+  peer0.org1.example.com:
+  grafana-storage:

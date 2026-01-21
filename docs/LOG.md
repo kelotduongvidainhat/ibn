@@ -214,3 +214,16 @@ This document logs the manual steps taken to add a new organization (Org2) to th
 4.  **Backend mTLS Integration**:
     - Refactored `backend/internal/fabric/connection.go` to support gRPC client certificates.
     - Provisioned the backend container with dedicated Admin TLS credentials to satisfy peer client authentication requirements.
+### 2026-01-21: Phase 10 & Channel Management Hardening
+- **Phase 10 (Observability)**:
+    - Implemented Prometheus for automated metrics collection across all peers and orderers.
+    - Integrated Grafana for real-time visualization with automated dashboard provisioning.
+    - Enabled `PROMETHEUS` metrics provider on all network nodes via environment variables.
+    - Provisioned "Fabric Overview" dashboard showing ledger height and node health.
+- **Channel Hardening**:
+    - Created `remove-channel.sh` for decommissioning application channels.
+    - Implemented Dual-Layer Collision Prevention in `create-channel.sh` (Live Orderer check + Registry history).
+    - Established `channel_index.history` and `retired_channels.list` in `docs/logs/`.
+- **Infrastructure**:
+    - Hardened `fresh-start.sh` to include cleanup and launch of the full observability stack.
+    - Integrated Phase 10 services into `network-down.sh` for stable resets.

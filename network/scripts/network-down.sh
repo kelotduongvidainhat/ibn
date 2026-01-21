@@ -39,8 +39,8 @@ fi
 echo "🐳 Stopping containers and removing volumes..."
 docker compose ${COMPOSE_FILES} down --volumes --remove-orphans || true
 # Ensure core containers are gone to prevent name conflicts
-docker stop chaincode-basic backend 2>/dev/null || true
-docker rm chaincode-basic backend 2>/dev/null || true
+docker stop chaincode-basic backend prometheus grafana 2>/dev/null || true
+docker rm chaincode-basic backend prometheus grafana 2>/dev/null || true
 
 # 2. CLEANUP PHYSICAL ARTIFACTS
 # We use a Docker helper to bypass permission issues with root-owned cert folders
