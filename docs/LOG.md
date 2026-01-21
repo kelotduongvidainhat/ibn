@@ -227,3 +227,8 @@ This document logs the manual steps taken to add a new organization (Org2) to th
 - **Infrastructure**:
     - Hardened `fresh-start.sh` to include cleanup and launch of the full observability stack.
     - Integrated Phase 10 services into `network-down.sh` for stable resets.
+- **Phase 10 (Centralized Logging)**:
+    - Implemented **ELK Stack** (Elasticsearch, Logstash, Kibana) for centralized log management.
+    - Deployed **Filebeat** as a sidecar container to harvest Docker logs from all Fabric nodes.
+    - Configured **Logstash** pipeline with custom Grok patterns to parse Fabric-specific log formats.
+    - Integrated ELK into the core lifecycle scripts (`bootstrap-ca.sh`, `network-down.sh`).
